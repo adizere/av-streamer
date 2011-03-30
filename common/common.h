@@ -8,6 +8,11 @@
 #ifndef _COMMON_H
 #define	_COMMON_H
 
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "fifo.h"
+#include "rtp.h"
 // TODO include fifo.h, rtp.h ...
 
 

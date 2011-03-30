@@ -29,6 +29,11 @@
         <platform>2</platform>
       </toolsSet>
       <compileType>
+        <ccTool>
+          <incDir>
+            <pElem>../common</pElem>
+          </incDir>
+        </ccTool>
         <linkerTool>
           <linkerLibItems>
           </linkerLibItems>
