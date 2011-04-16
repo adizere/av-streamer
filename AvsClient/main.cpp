@@ -25,21 +25,22 @@ int main(int argc, char** argv) {
     result = connect(socket_handle, (struct sockaddr *)&conn_address, sizeof(conn_address));
 
     
-    int number = argv[1] ? atoi(argv[1]) : '100';
+    int32_t number = argv[1] ? atoi(argv[1]) : 100;
     
     int status;
     printf("Sendin %d\n", number);
+    number = htonl(number);
     do
     {
         printf(".");
-        status = send(socket_handle, &number, sizeof(int), 0);
+        status = send(socket_handle, &number, sizeof(int32_t), 0);
     }
     while((status<0)&&(errno == EAGAIN));
-    printf("\nSent the number %d\n", number);
+    printf("\nDone;\n ");
 
     char receive_buff[100];
     int rec_size = recv(socket_handle, receive_buff, 100, 0);
-    printf("Received %d words from the server: %c\n", rec_size, receive_buff);
+    printf("Received %d bytes from the server: %s\n", rec_size, receive_buff);
     
 
     /* TODO: error handling for all system calls */
