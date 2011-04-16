@@ -16,7 +16,6 @@
 #include <signal.h>
 #include <time.h>
 
-//General defines and includes needed
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
@@ -25,15 +24,22 @@
 #include <errno.h>
 
 #define SOCK_DCCP 6
-#define IPPROTO_DCCP 33  //it must be this number. This number is assigned by IANA to DCCP
+#define IPPROTO_DCCP 33
 #define SOL_DCCP 269
 #define MAX_DCCP_CONNECTION_BACK_LOG 5
+#define LOCAL_PORT 25555
 
-void error(const char* msg)
+const char* const LOCAL_IP = "127.0.0.1" ;
+
+
+void error(const char* msg, int exit_flag)
 {
     perror(msg);
     fflush(stderr);
     fflush(stdout);
+
+    if (exit_flag ==  1)
+        exit(EXIT_FAILURE);
 }
 
 
