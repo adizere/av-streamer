@@ -14,6 +14,7 @@
 
 #include <pthread.h>
 #include <signal.h>
+#include <string.h>
 #include <time.h>
 
 #include <sys/socket.h>
@@ -23,8 +24,6 @@
 
 #include <errno.h>
 
-#define SOCK_DCCP 6
-#define IPPROTO_DCCP 33
 #define SOL_DCCP 269
 #define MAX_DCCP_CONNECTION_BACK_LOG 5
 #define LOCAL_PORT 25555
@@ -32,7 +31,7 @@
 const char* const LOCAL_IP = "127.0.0.1" ;
 
 
-void error(const char* msg, int exit_flag)
+void error(const char* msg, int exit_flag = 0)
 {
     perror(msg);
     fflush(stderr);
