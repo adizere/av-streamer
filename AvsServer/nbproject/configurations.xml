@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configurationDescriptor version="62">
   <logicalFolder name="root" displayName="root" projectFiles="true">
+    <logicalFolder name="common" displayName="common" projectFiles="true">
+      <itemPath>../common/16042011.jpg</itemPath>
+      <itemPath>../common/common.h</itemPath>
+      <itemPath>../common/fifo.h</itemPath>
+      <itemPath>../common/rtp.h</itemPath>
+    </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
@@ -20,6 +26,9 @@
       <itemPath>Makefile</itemPath>
     </logicalFolder>
   </logicalFolder>
+  <sourceRootList>
+    <Elem>../common</Elem>
+  </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
     <conf name="Debug" type="1">
@@ -29,6 +38,11 @@
         <platform>2</platform>
       </toolsSet>
       <compileType>
+        <cTool>
+          <incDir>
+            <pElem>../common</pElem>
+          </incDir>
+        </cTool>
         <ccTool>
           <incDir>
             <pElem>../common</pElem>
