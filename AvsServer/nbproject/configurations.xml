@@ -50,6 +50,7 @@
         </ccTool>
         <linkerTool>
           <linkerLibItems>
+            <linkerOptionItem>-lpthread </linkerOptionItem>
           </linkerLibItems>
         </linkerTool>
       </compileType>
