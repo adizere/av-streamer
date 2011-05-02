@@ -31,6 +31,8 @@ OBJECTDIR=build/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
+	${OBJECTDIR}/fifo.o \
+	${OBJECTDIR}/clhandler.o \
 	${OBJECTDIR}/main.o
 
 # C Compiler Flags
@@ -56,6 +58,16 @@ LDLIBSOPTIONS=
 dist/Release/GNU-Linux-x86/avsserver: ${OBJECTFILES}
 	${MKDIR} -p dist/Release/GNU-Linux-x86
 	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/avsserver ${OBJECTFILES} ${LDLIBSOPTIONS} 
+
+${OBJECTDIR}/fifo.o: nbproject/Makefile-${CND_CONF}.mk fifo.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/fifo.o fifo.cpp
+
+${OBJECTDIR}/clhandler.o: nbproject/Makefile-${CND_CONF}.mk clhandler.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -MMD -MP -MF $@.d -o ${OBJECTDIR}/clhandler.o clhandler.cpp
 
 ${OBJECTDIR}/main.o: nbproject/Makefile-${CND_CONF}.mk main.cpp 
 	${MKDIR} -p ${OBJECTDIR}

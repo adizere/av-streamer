@@ -31,7 +31,7 @@
 const char* const LOCAL_IP = "127.0.0.1" ;
 
 
-void error(const char* msg, int exit_flag = 0)
+static void error(const char* msg, int exit_flag = 0)
 {
     perror(msg);
     fflush(stderr);
