@@ -32,11 +32,12 @@ struct _rtp_header {
 
 } __attribute__((packed));
 
+typedef int rtp_payload;
 
 typedef struct _rtp_packet rtp_packet;
 struct _rtp_packet {
     rtp_header header;
-    char* payload;
+    rtp_payload payload;
 };
 
 

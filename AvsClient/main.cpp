@@ -7,13 +7,45 @@
 
 #include "common.h"
 
-/*
- * 
- */
-int main(int argc, char** argv) {
+/* global socket */
+int socket_handle;
 
-    int socket_handle = socket(PF_INET, SOCK_DCCP, IPPROTO_DCCP);
 
+void sigint_handler(int signal) {
+    printf("Client shutting down..\n");
+
+    // close the player
+    
+    exit(EXIT_SUCCESS);
+}
+
+
+/* Thread used to receive incoming data streams */
+void* recv_thread(void* arg) {
+    rtp_packet* packet = (rtp_packet*)malloc(sizeof(rtp_packet));
+
+    /* allocate space for payload if needed.. */
+    //packet->payload = (packet_payload*)malloc(sizeof(packet_payload));
+
+    int rec_size = recv(socket_handle, packet, sizeof(rtp_packet), 0);
+
+    
+}
+
+/* Thread used to send feedback to the server */
+void* send_thread(void* arg) {
+
+}
+
+
+int main(int argc, char** argv)
+{
+
+    signal(SIGINT, sigint_handler);
+    
+    socket_handle = socket(PF_INET, SOCK_DCCP, IPPROTO_DCCP);
+
+    /* socket setup */
     int on = 1;
     int result = setsockopt(socket_handle, SOL_DCCP, SO_REUSEADDR, (const char *) &on, sizeof(on));
 
@@ -24,23 +56,28 @@ int main(int argc, char** argv) {
 
     result = connect(socket_handle, (struct sockaddr *)&conn_address, sizeof(conn_address));
 
-    
-    int32_t number = argv[1] ? atoi(argv[1]) : 100;
-    
-    int status;
-    printf("Sendin %d\n", number);
-    number = htonl(number);
-    do
-    {
-        printf(".");
-        status = send(socket_handle, &number, sizeof(int32_t), 0);
-    }
-    while((status<0)&&(errno == EAGAIN));
-    printf("\nDone;\n ");
+    pthread_t *rthread_id, *sthread_id;
+    /* initializing the recv and send threads */
+    int rc = pthread_create(rthread_id, NULL, recv_thread, NULL);
+    if(rc < 0)
+        error("Error creating Receive thread\n", 1);
 
-    char receive_buff[100];
-    int rec_size = recv(socket_handle, receive_buff, 100, 0);
-    printf("Received %d bytes from the server: %s\n", rec_size, receive_buff);
+    rc = pthread_create(sthread_id, NULL, send_thread, NULL);
+    if(rc < 0)
+        error("Error creating Send thread\n", 1);
+
+
+//    number = htonl(number);
+//    do
+//    {
+//        printf(".");
+//        status = send(socket_handle, &number, sizeof(int32_t), 0);
+//    }
+//    while((status<0)&&(errno == EAGAIN));
+
+//    char receive_buff[100];
+//    int rec_size = recv(socket_handle, receive_buff, 100, 0);
+
     
 
     /* TODO: error handling for all system calls */
