@@ -28,6 +28,8 @@
 #define MAX_DCCP_CONNECTION_BACK_LOG 5
 #define LOCAL_PORT 25555
 
+#define FIFO_DEFAULT_CAPACITY 1000      // TODO: decide how big should this be
+
 const char* const LOCAL_IP = "127.0.0.1" ;
 
 

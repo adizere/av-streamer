@@ -10,7 +10,9 @@
 
 #include <stdlib.h>
 
+// Adi: we should change the typedef from int to rtp_packet
 typedef int fifo_elem; // TODO change to payload
+
 
 typedef struct _fifo
 {

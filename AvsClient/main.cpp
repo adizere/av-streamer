@@ -9,6 +9,7 @@
 
 /* global socket */
 int socket_handle;
+fifo* packets_queue;
 
 
 void sigint_handler(int signal) {
@@ -23,12 +24,16 @@ void sigint_handler(int signal) {
 /* Thread used to receive incoming data streams */
 void* recv_thread(void* arg) {
     rtp_packet* packet = (rtp_packet*)malloc(sizeof(rtp_packet));
+    packets_queue = create_fifo(FIFO_DEFAULT_CAPACITY);
 
     /* allocate space for payload if needed.. */
     //packet->payload = (packet_payload*)malloc(sizeof(packet_payload));
 
-    int rec_size = recv(socket_handle, packet, sizeof(rtp_packet), 0);
-
+    // add a method to determine when we should stop recv()-ing
+    while(1) {
+        int rec_size = recv(socket_handle, packet, sizeof(rtp_packet), 0);
+        enqueue(packets_queue, packet);
+    }
     
 }
 
