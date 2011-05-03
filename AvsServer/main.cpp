@@ -26,9 +26,9 @@ void shutdown_server(int sig){
 /*
  * 
  */
-int main(int argc, char** argv)
+int main(int argc, char* argv[])
 {
-
+    
     struct sockaddr_in addr, rem_addr;
     socklen_t len, rem_len;
 

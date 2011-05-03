@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configurationDescriptor version="62">
-  <logicalFolder name="root" displayName="root" projectFiles="true">
+<configurationDescriptor version="79">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <logicalFolder name="common" displayName="common" projectFiles="true">
       <itemPath>../common/16042011.jpg</itemPath>
+      <itemPath>../common/audiovideo.cpp</itemPath>
+      <itemPath>../common/audiovideo.h</itemPath>
       <itemPath>../common/common.h</itemPath>
       <itemPath>../common/fifo.h</itemPath>
       <itemPath>../common/rtp.h</itemPath>
@@ -32,14 +34,15 @@
   </logicalFolder>
   <sourceRootList>
     <Elem>../common</Elem>
+    <Elem>/usr/include/SDL</Elem>
+    <Elem>/usr/local/include</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
     <conf name="Debug" type="1">
       <toolsSet>
-        <developmentServer>localhost</developmentServer>
+        <remote-sources-mode>LOCAL_SOURCES</remote-sources-mode>
         <compilerSet>GNU|GNU</compilerSet>
-        <platform>2</platform>
       </toolsSet>
       <compileType>
         <cTool>
@@ -53,17 +56,26 @@
           </incDir>
         </ccTool>
         <linkerTool>
+          <linkerAddLib>
+            <pElem>/usr/local/lib</pElem>
+            <pElem>/usr/lib</pElem>
+          </linkerAddLib>
           <linkerLibItems>
             <linkerOptionItem>-lpthread </linkerOptionItem>
+            <linkerOptionItem>-lSDL</linkerOptionItem>
+            <linkerOptionItem>-lavformat</linkerOptionItem>
+            <linkerOptionItem>-lavcodec</linkerOptionItem>
+            <linkerOptionItem>-lavutil</linkerOptionItem>
+            <linkerOptionItem>-lswscale</linkerOptionItem>
           </linkerLibItems>
+          <commandLine>-lz -lm</commandLine>
         </linkerTool>
       </compileType>
     </conf>
     <conf name="Release" type="1">
       <toolsSet>
-        <developmentServer>localhost</developmentServer>
+        <remote-sources-mode>LOCAL_SOURCES</remote-sources-mode>
         <compilerSet>GNU|GNU</compilerSet>
-        <platform>2</platform>
       </toolsSet>
       <compileType>
         <cTool>
@@ -75,10 +87,6 @@
         <fortranCompilerTool>
           <developmentMode>5</developmentMode>
         </fortranCompilerTool>
-        <linkerTool>
-          <linkerLibItems>
-          </linkerLibItems>
-        </linkerTool>
       </compileType>
     </conf>
   </confs>

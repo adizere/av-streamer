@@ -10,30 +10,35 @@
 # Environment
 MKDIR=mkdir
 CP=cp
+GREP=grep
+NM=nm
 CCADMIN=CCadmin
 RANLIB=ranlib
 CC=gcc
 CCC=g++
 CXX=g++
-FC=
+FC=gfortran
 AS=as
 
 # Macros
 CND_PLATFORM=GNU-Linux-x86
 CND_CONF=Debug
 CND_DISTDIR=dist
+CND_BUILDDIR=build
 
 # Include project Makefile
 include Makefile
 
 # Object Directory
-OBJECTDIR=build/${CND_CONF}/${CND_PLATFORM}
+OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
+	${OBJECTDIR}/main.o \
 	${OBJECTDIR}/fifo.o \
 	${OBJECTDIR}/clhandler.o \
-	${OBJECTDIR}/main.o
+	${OBJECTDIR}/_ext/1270477542/audiovideo.o
+
 
 # C Compiler Flags
 CFLAGS=
@@ -49,38 +54,43 @@ FFLAGS=
 ASFLAGS=
 
 # Link Libraries and Options
-LDLIBSOPTIONS=-lpthread
+LDLIBSOPTIONS=-L/usr/local/lib -L/usr/lib -lpthread -lSDL -lavformat -lavcodec -lavutil -lswscale
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	${MAKE}  -f nbproject/Makefile-Debug.mk dist/Debug/GNU-Linux-x86/avsserver
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/avsserver
 
-dist/Debug/GNU-Linux-x86/avsserver: ${OBJECTFILES}
-	${MKDIR} -p dist/Debug/GNU-Linux-x86
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/avsserver ${OBJECTFILES} ${LDLIBSOPTIONS} 
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/avsserver: ${OBJECTFILES}
+	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
+	${LINK.cc} -lz -lm -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/avsserver ${OBJECTFILES} ${LDLIBSOPTIONS} 
 
-${OBJECTDIR}/fifo.o: nbproject/Makefile-${CND_CONF}.mk fifo.cpp 
+${OBJECTDIR}/main.o: main.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.cc) -g -I../common -MMD -MP -MF $@.d -o ${OBJECTDIR}/main.o main.cpp
+
+${OBJECTDIR}/fifo.o: fifo.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.cc) -g -I../common -MMD -MP -MF $@.d -o ${OBJECTDIR}/fifo.o fifo.cpp
 
-${OBJECTDIR}/clhandler.o: nbproject/Makefile-${CND_CONF}.mk clhandler.cpp 
+${OBJECTDIR}/clhandler.o: clhandler.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.cc) -g -I../common -MMD -MP -MF $@.d -o ${OBJECTDIR}/clhandler.o clhandler.cpp
 
-${OBJECTDIR}/main.o: nbproject/Makefile-${CND_CONF}.mk main.cpp 
-	${MKDIR} -p ${OBJECTDIR}
+${OBJECTDIR}/_ext/1270477542/audiovideo.o: ../common/audiovideo.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/1270477542
 	${RM} $@.d
-	$(COMPILE.cc) -g -I../common -MMD -MP -MF $@.d -o ${OBJECTDIR}/main.o main.cpp
+	$(COMPILE.cc) -g -I../common -MMD -MP -MF $@.d -o ${OBJECTDIR}/_ext/1270477542/audiovideo.o ../common/audiovideo.cpp
 
 # Subprojects
 .build-subprojects:
 
 # Clean Targets
 .clean-conf: ${CLEAN_SUBPROJECTS}
-	${RM} -r build/Debug
-	${RM} dist/Debug/GNU-Linux-x86/avsserver
+	${RM} -r ${CND_BUILDDIR}/${CND_CONF}
+	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/avsserver
 
 # Subprojects
 .clean-subprojects:
