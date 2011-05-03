@@ -5,6 +5,7 @@
  * Created on March 30, 2011, 10:02 PM
  */
 
+#include "globals.h"
 #include "common.h"
 
 /* global socket */
