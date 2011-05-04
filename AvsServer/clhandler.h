@@ -9,7 +9,7 @@
 #define	_CLHANDLER_H
 
 #include "globals.h"
-#include "common.h"
+#include "../common/common.h"
 
 
 // client handler data

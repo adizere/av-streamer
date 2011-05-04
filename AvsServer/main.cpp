@@ -5,7 +5,7 @@
  * Created on March 30, 2011, 10:01 PM
  */
 
-#include "common.h"
+#include "../common/common.h"
 #include "globals.h"
 #include "clhandler.h"
 

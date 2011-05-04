@@ -10,7 +10,7 @@
 
 #define __AvsServer__
 
-#include "common.h"
+#include "../common/common.h"
 
 // data about the handler threads
 typedef struct
