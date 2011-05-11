@@ -9,9 +9,10 @@
 #define	_FIFO_H
 
 #include <stdlib.h>
+#include "rtp.h"
 
 // Adi: we should change the typedef from int to rtp_packet
-typedef int fifo_elem; // TODO change to payload
+typedef rtp_packet fifo_elem; // TODO change to payload
 
 
 typedef struct _fifo

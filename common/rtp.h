@@ -8,27 +8,28 @@
 #ifndef _RTP_H
 #define	_RTP_H
 
+#include <stdint.h>
 
 typedef struct _rtp_header rtp_header;
 struct _rtp_header {
     /* version */
-    u_int16_t version;
+    uint16_t version;
 
     /* flags */
-    u_int8_t P;         /* padding */
-    u_int8_t X;         /* extension header presence */
-    u_int8_t CC;        /* Contributing sources count */
-    u_int8_t M;         /* Marker - if packet has a special relevance */
-    u_int8_t PT;        /* Payload type */
+    uint8_t P;         /* padding */
+    uint8_t X;         /* extension header presence */
+    uint8_t CC;        /* Contributing sources count */
+    uint8_t M;         /* Marker - if packet has a special relevance */
+    uint8_t PT;        /* Payload type */
 
     /* sequence number - increasing for every individual packet */
-    u_int16_t seq;
+    uint16_t seq;
 
     /* timestamp */
-    u_int32_t timestamp;
+    uint32_t timestamp;
 
     /* SSRC identifier - source identifier */
-    u_int32_t ssrc;
+    uint32_t ssrc;
 
 } __attribute__((packed));
 
