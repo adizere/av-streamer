@@ -11,7 +11,7 @@
 #include "globals.h"
 #include "../common/common.h"
 
-
+//TODO - add queue and queue protection(mutex)
 // client handler data
 typedef struct
 {
@@ -25,6 +25,11 @@ typedef struct
 // client handler thread
 void* ch_thread(void* data);
 
+/* Thread used to send audio video streams */
+void* send_thread(void* data);
+
+/* Thread used to receive feedback from client */
+void* recv_thread(void* data);
 
 #endif	/* _NEWFILE_H */
 

@@ -7,38 +7,71 @@ void* ch_thread(void* data)
 
     int client_sock = dp->sock;
     int pool_index = dp->pool_index;
-    const char* filename = dp->filename;
     struct sockaddr_in rem_addr = dp->rem_addr;
 
     int rc;
 
     printf("Client connected: %s\n", inet_ntoa(rem_addr.sin_addr));
 
-    int32_t msg;
-
-    //receive msg from client
-    rc = recv(client_sock, &msg, sizeof(int32_t), 0);
+    pthread_t rthread_id, sthread_id;
+    /* initializing the recv and send threads */
+    rc = pthread_create(&rthread_id, NULL, recv_thread, NULL);
     if(rc < 0)
-        error("Error on recv!\n");
+        error("Error creating Receive thread\n", 1);
 
-    msg = ntohl(msg);
-    printf("Received from client:%d\n", msg);
-
-    g_sum += msg;
-
-    char send_buff[100];
-    sprintf(send_buff, "%d", g_sum);
-    printf("Reply with:%s\n", send_buff);
-
-    rc = send(client_sock, send_buff, strlen(send_buff)+1, 0);
+    rc = pthread_create(&sthread_id, NULL, send_thread, NULL);
     if(rc < 0)
-        error("Error on send!\n");
-    printf("Done;\n");
+        error("Error creating Send thread\n", 1);
+
+
+    pthread_join(rthread_id, NULL);
+    pthread_join(sthread_id, NULL);
 
     close(client_sock);
     free(dp);
 
-    //TODO SYNCRONIZE THREAD POOL
+
+    LOCK(&server_mutex);
     thread_pool[pool_index].alive = false;
+    UNLOCK(&server_mutex);
+
     return NULL;
 }
+
+/* Thread used to send audio video streams */
+void* send_thread(void* data) {
+    ch_data* dp = (ch_data*)data;
+
+    int client_sock = dp->sock;
+    const char* filename = dp->filename;
+
+    char buff[512];
+    FILE* finp = fopen(filename, "r");
+
+    if(NULL == finp)
+        error("Unable to open input file!", 1);
+
+    while(fgets(buff, 5, finp)){
+        int rc = send(client_sock, buff, strlen(buff)+1, 0);
+        sleep(1);
+    }
+}
+
+/* Thread used to receive feedback from client */
+void* recv_thread(void* data) {
+    ch_data* dp = (ch_data*)data;
+
+    int client_sock = dp->sock;
+
+    char buff[512];
+
+    // add a method to determine when we should stop recv()-ing
+    while(1) {
+        memset(buff, 0, 512);
+        int rc = recv(client_sock, buff, 512, 0);
+        printf("feedback:%s\n",buff);
+        fflush(stdout);
+    }
+
+}
+

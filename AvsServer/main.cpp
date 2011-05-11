@@ -105,12 +105,17 @@ int main(int argc, char* argv[])
 
     }
 
-     for(i = 0; i < MAX_DCCP_CONNECTION_BACK_LOG; ++i)
-        if(thread_pool[i].alive)//TODO syncronize
+    for(i = 0; i < MAX_DCCP_CONNECTION_BACK_LOG; ++i)
+    {
+        LOCK(&server_mutex);
+        if(thread_pool[i].alive)
         {
             pthread_join(thread_pool[i].tid, NULL);
             thread_pool[i].alive = false;
         }
+        UNLOCK(&server_mutex);
+    }
+
     close(rv_sock);
 
     printf("Success\n");

@@ -30,6 +30,9 @@
 
 #define FIFO_DEFAULT_CAPACITY 1000      // TODO: decide how big should this be
 
+#define LOCK(x) pthread_mutex_lock(x)
+#define UNLOCK(x) pthread_mutex_unlock(x)
+
 const char* const LOCAL_IP = "127.0.0.1" ;
 
 

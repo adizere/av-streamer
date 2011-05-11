@@ -26,20 +26,34 @@ void sigint_handler(int signal) {
 void* recv_thread(void* arg) {
     rtp_packet packet;
     packets_queue = create_fifo(FIFO_DEFAULT_CAPACITY);
+    char buff[512];
 
     /* allocate space for payload if needed.. */
     //packet->payload = (packet_payload*)malloc(sizeof(packet_payload));
 
     // add a method to determine when we should stop recv()-ing
     while(1) {
-        int rec_size = recv(socket_handle, &packet, sizeof(rtp_packet), 0);
-        enqueue(packets_queue, packet);
+        //int rec_size = recv(socket_handle, &packet, sizeof(rtp_packet), 0);
+        //enqueue(packets_queue, packet);
+
+        int rc = recv(socket_handle, buff, 512, 0);
+        printf("from server:%s\n",buff);
+        fflush(stdout);
     }
     
+    destroy_fifo(packets_queue);
 }
 
 /* Thread used to send feedback to the server */
 void* send_thread(void* arg) {
+
+    int count = 0;
+    char buff[512];
+    while(1){
+        sprintf(buff, "dummy feedback %d", count++);
+        int rc = send(socket_handle, buff, strlen(buff)+1, 0);
+        sleep(1);
+    }
 
 }
 
@@ -62,13 +76,13 @@ int main(int argc, char** argv)
 
     result = connect(socket_handle, (struct sockaddr *)&conn_address, sizeof(conn_address));
 
-    pthread_t *rthread_id, *sthread_id;
+    pthread_t rthread_id, sthread_id;
     /* initializing the recv and send threads */
-    int rc = pthread_create(rthread_id, NULL, recv_thread, NULL);
+    int rc = pthread_create(&rthread_id, NULL, recv_thread, NULL);
     if(rc < 0)
         error("Error creating Receive thread\n", 1);
 
-    rc = pthread_create(sthread_id, NULL, send_thread, NULL);
+    rc = pthread_create(&sthread_id, NULL, send_thread, NULL);
     if(rc < 0)
         error("Error creating Send thread\n", 1);
 
