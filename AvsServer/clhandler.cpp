@@ -1,6 +1,8 @@
 #include "clhandler.h"
 
-// client handler thread
+
+/* Client handler thread
+ */
 void* ch_thread(void* data)
 {
     ch_data* dp = (ch_data*)data;
@@ -15,11 +17,11 @@ void* ch_thread(void* data)
 
     pthread_t rthread_id, sthread_id;
     /* initializing the recv and send threads */
-    rc = pthread_create(&rthread_id, NULL, recv_thread, NULL);
+    rc = pthread_create(&rthread_id, NULL, recv_thread, (void*)dp);
     if(rc < 0)
         error("Error creating Receive thread\n", 1);
 
-    rc = pthread_create(&sthread_id, NULL, send_thread, NULL);
+    rc = pthread_create(&sthread_id, NULL, send_thread, (void*)dp);
     if(rc < 0)
         error("Error creating Send thread\n", 1);
 
@@ -38,10 +40,11 @@ void* ch_thread(void* data)
     return NULL;
 }
 
+
 /* Thread used to send audio video streams */
 void* send_thread(void* data) {
     ch_data* dp = (ch_data*)data;
-
+    
     int client_sock = dp->sock;
     const char* filename = dp->filename;
 
@@ -57,6 +60,7 @@ void* send_thread(void* data) {
     }
 }
 
+
 /* Thread used to receive feedback from client */
 void* recv_thread(void* data) {
     ch_data* dp = (ch_data*)data;
@@ -69,9 +73,8 @@ void* recv_thread(void* data) {
     while(1) {
         memset(buff, 0, 512);
         int rc = recv(client_sock, buff, 512, 0);
-        printf("feedback:%s\n",buff);
+        printf("Feedback:%s\n",buff);
         fflush(stdout);
     }
 
 }
-

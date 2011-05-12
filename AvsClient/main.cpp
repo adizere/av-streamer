@@ -52,7 +52,7 @@ void* send_thread(void* arg) {
     while(1){
         sprintf(buff, "dummy feedback %d", count++);
         int rc = send(socket_handle, buff, strlen(buff)+1, 0);
-        sleep(1);
+        sleep(5);
     }
 
 }
