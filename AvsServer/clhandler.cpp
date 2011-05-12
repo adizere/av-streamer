@@ -56,7 +56,7 @@ void* send_thread(void* data) {
 
     while(fgets(buff, 5, finp)){
         int rc = send(client_sock, buff, strlen(buff)+1, 0);
-        sleep(1);
+        usleep(dp->st_rate);
     }
 }
 
@@ -73,7 +73,13 @@ void* recv_thread(void* data) {
     while(1) {
         memset(buff, 0, 512);
         int rc = recv(client_sock, buff, 512, 0);
-        printf("Feedback:%s\n",buff);
+        if (rc == 0)            /* peer has shutdown the socket */
+        {
+            printf("Client shutdown\n");
+            break;
+        }
+        
+        printf("Feedback size %d: %s\n", rc, buff);
         fflush(stdout);
     }
 
