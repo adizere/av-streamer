@@ -17,9 +17,10 @@ typedef struct
 {
     int sock;
     int pool_index;
-    useconds_t st_rate;                /* server transmission rate - interpreted in microseconds */
+    useconds_t st_rate;                 /* server transmission rate - interpreted in microseconds */
     const char* filename;
     struct sockaddr_in rem_addr;
+    fifo* private_fifo;                 /* the queue used for this particular client */
 } ch_data;
 
 

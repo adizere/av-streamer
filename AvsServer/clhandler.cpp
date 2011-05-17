@@ -37,6 +37,7 @@ void* ch_thread(void* data)
     pthread_join(stream_thread_id, NULL);
 
     close(client_sock);
+    destroy_fifo(dp->private_fifo);
     free(dp);
 
 
@@ -56,14 +57,19 @@ void* send_thread(void* data)
     int client_sock = dp->sock;
     const char* filename = dp->filename;
 
-    char buff[512];
-    FILE* finp = fopen(filename, "r");
-
-    if(NULL == finp)
-        error("Unable to open input file!", 1);
-
-    while(fgets(buff, 5, finp)){
-        int rc = send(client_sock, buff, strlen(buff)+1, 0);
+    fifo_elem* fe;
+    while(1)
+    {
+        if (dequeue(dp->private_fifo, fe) == -1)
+        {
+            usleep(5 * dp->st_rate);
+            continue;
+        }
+        
+        /* Create new rtp packet to be sent..
+        */
+        // TODO: sizeof(fe) is wrong..
+        int rc = send(client_sock, fe, sizeof(fe), 0);
         usleep(dp->st_rate);
     }
 }
@@ -78,7 +84,6 @@ void* recv_thread(void* data)
 
     char buff[512];
 
-    // add a method to determine when we should stop recv()-ing
     while(1) {
         memset(buff, 0, 512);
         int rc = recv(client_sock, buff, 512, 0);
@@ -95,12 +100,14 @@ void* recv_thread(void* data)
 }
 
 
+/* Thread used to read the data streams and put them in the queue */
 void* stream_read_thread(void* data)
 {
     ch_data* dp = (ch_data*)data;
     
     /* Adi:
-     * Johannes should open dp->filename and populate the queue that is 
-     * yet to be added in the ch_data structure (clhandler.h)
+     * Johannes should open dp->filename and populate the queue held in
+     * dp->private_fifo;
+     * Example: enqueue(dp->private_fifo, pkg), where pkg is of type rtp_packet
      */
 }

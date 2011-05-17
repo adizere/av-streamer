@@ -71,17 +71,17 @@ int main(int argc, char* argv[])
     printf("Server started on port: %d\n", LOCAL_PORT);
     g_sum = 0;
 
-    //----------------------------//
-    //DCCP Server inititialization
-    //get a socket handle just like TCP Server
-    //RENDEZ-VOUS ?
+    /* DCCP Server inititialization
+     * This is the rendez-vous socket
+     */
     rv_sock = socket(PF_INET, SOCK_DCCP, IPPROTO_DCCP);
     if(rv_sock < 0)
         error("Socket init error!\n");
 
 
-    //turn off bind address checking, and allow port numbers to be reused - otherwise
-    //  the TIME_WAIT phenomenon will prevent  binding to these address.port combinations for (2 * MSL) seconds.
+    /* Turn off bind address checking, and allow port numbers to be reused - otherwise
+     * the TIME_WAIT phenomenon will prevent  binding to these address.port combinations for (2 * MSL) seconds.
+     */
     int on = 1;
     int rc = setsockopt(rv_sock, SOL_DCCP, SO_REUSEADDR, (const char *) &on, sizeof(on));
     int i, index;
@@ -135,6 +135,8 @@ int main(int argc, char* argv[])
         dp->filename = file;
         dp->st_rate = st_rate;
         dp->rem_addr = rem_addr;
+        fifo* fp = create_fifo(FIFO_DEFAULT_CAPACITY);
+        dp->private_fifo = fp;
 
         rc = pthread_create(&(thread_pool[index].tid), NULL, ch_thread, (void*)dp);
         if(rc < 0)

@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include "rtp.h"
 
-// Adi: we should change the typedef from int to rtp_packet
+// Adi, update: we should change the typedef from rtp_packet to AvPaacket or something similar
 typedef rtp_packet fifo_elem; // TODO change to payload
 
 
