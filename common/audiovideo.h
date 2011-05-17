@@ -1,7 +1,4 @@
-/* 
- * File:   audiovideo.h
- * Author: hani
- *
+/*
  * Created on May 3, 2011, 10:02 AM
  * 
  * =============================================================================
@@ -83,8 +80,6 @@ private:
     AVFormatContext *format_ctx;        ///< Media file handle and context.
     AVCodecContext *codec_ctx;          ///< Codec context.
     AVCodec *codec;
-    AVPacket packet;
-    int video_stream;
 #elif defined (__AvsClient__)
     struct SwsContext *sws_ctx;
     SDL_Surface *screen;
@@ -96,7 +91,7 @@ public:
 #if defined (__AvsServer__)
     bool init_send (char *filename);
     bool get_stream_info (streaminfo *stream_info);
-    int read_frame_from_file (AVFrame *frame);
+    bool read_packet_from_file (AVPacket *packet);
     void end_send ();
 #elif defined (__AvsClient__)
     bool init_recv (streaminfo *stream_info);
@@ -105,8 +100,7 @@ public:
 #else
 #warning "Why do you need AVManager after all?"
 #endif
-    static AVFrame * alloc_frame ();
-    static void free_frame (AVFrame *frame);
+    static void dealloc_packet (AVPacket *packet);
     ~AVManager ();
 };
 
