@@ -64,8 +64,10 @@ void* send_thread(void*)
     {
         sprintf(buff, "dummy feedback %d", count++);
         int rc = send(socket_handle, buff, strlen(buff)+1, 0);
+        if (rc < 0)
+            break;
         sleep(5);
-        printf("Sent..\n");
+        printf("Client feedback sent: %d bytes\n", rc);
     }
 
 }
