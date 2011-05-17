@@ -15,7 +15,13 @@ void* ch_thread(void* data)
 
     printf("Client connected: %s\n", inet_ntoa(rem_addr.sin_addr));
 
-    pthread_t rthread_id, sthread_id;
+    pthread_t rthread_id, sthread_id, stream_thread_id;
+    
+    /* initializing the stream reading thread */
+    rc = pthread_create(&stream_thread_id, NULL, stream_read_thread, (void*)dp);
+    if(rc < 0)
+        error("Error creating Stream Reader thread\n", 1);
+    
     /* initializing the recv and send threads */
     rc = pthread_create(&rthread_id, NULL, recv_thread, (void*)dp);
     if(rc < 0)
@@ -28,6 +34,7 @@ void* ch_thread(void* data)
 
     pthread_join(rthread_id, NULL);
     pthread_join(sthread_id, NULL);
+    pthread_join(stream_thread_id, NULL);
 
     close(client_sock);
     free(dp);
@@ -42,7 +49,8 @@ void* ch_thread(void* data)
 
 
 /* Thread used to send audio video streams */
-void* send_thread(void* data) {
+void* send_thread(void* data)
+{
     ch_data* dp = (ch_data*)data;
     
     int client_sock = dp->sock;
@@ -62,7 +70,8 @@ void* send_thread(void* data) {
 
 
 /* Thread used to receive feedback from client */
-void* recv_thread(void* data) {
+void* recv_thread(void* data)
+{
     ch_data* dp = (ch_data*)data;
 
     int client_sock = dp->sock;
@@ -83,4 +92,15 @@ void* recv_thread(void* data) {
         fflush(stdout);
     }
 
+}
+
+
+void* stream_read_thread(void* data)
+{
+    ch_data* dp = (ch_data*)data;
+    
+    /* Adi:
+     * Johannes should open dp->filename and populate the queue that is 
+     * yet to be added in the ch_data structure (clhandler.h)
+     */
 }

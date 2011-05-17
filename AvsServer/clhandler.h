@@ -32,5 +32,8 @@ void* send_thread(void* data);
 /* Thread used to receive feedback from client */
 void* recv_thread(void* data);
 
+/* Thread used to read the data streams and put them in the queue */
+void* stream_read_thread(void* data);
+
 #endif	/* _NEWFILE_H */
 
