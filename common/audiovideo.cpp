@@ -45,7 +45,7 @@ bool AVManager::init_send (char *filename)
     }
     
     // Dump information about file onto standard error.
-    av_dump_format (format_ctx, 0, this->filename, 0);
+    //av_dump_format (format_ctx, 0, this->filename, 0);
     
     // Now format_ctx->streams is just an array of pointers,
     // of size format_ctx->nb_streams, so let's walk through it
