@@ -56,7 +56,7 @@ void handle_cmd_args(int argc, char** argv, char** file, useconds_t* st_rate)
 ///
 /// \brief In order to test this, you'll have to set __AvsClient__ and __AvsServer__ defines.
 ///
-int audiovideo_api_test()
+/*int audiovideo_api_test()
 {
     /* Server side initialization. */
 
@@ -69,7 +69,7 @@ int audiovideo_api_test()
     if (mgr_server.get_stream_info (&si) == false)
         return -1;
 
-    /* Client side initialization with data received from server. */
+    // Client side initialization with data received from server.
 
     AVManager mgr_client (AVReceiverMode);
     streaminfo si_client = {0};
@@ -91,13 +91,13 @@ int audiovideo_api_test()
         mgr_client.free_packet (&media_packet);
     }
 
-    /* Cleanup */
+    // Cleanup
 
     mgr_server.end_send ();
     mgr_client.end_recv ();
 
     return 0;
-}
+} */
 
 
 /*
