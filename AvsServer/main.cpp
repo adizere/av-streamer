@@ -58,7 +58,7 @@ void handle_cmd_args(int argc, char** argv, char** file, useconds_t* st_rate)
 ///
 /*int audiovideo_api_test()
 {
-    /* Server side initialization. */
+    // Server side initialization.
 
     AVManager mgr_server (AVSenderMode);
     streaminfo si;
