@@ -8,7 +8,6 @@
 #ifndef __AVSSERVER_GLOBALS_H__
 #define	__AVSSERVER_GLOBALS_H__
 
-#define __AvsServer__
 
 #include "../common/common.h"
 
@@ -26,4 +25,3 @@ static int rv_sock;
 static pthread_mutex_t server_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #endif	/* __AVSSERVER_GLOBALS_H__ */
-
