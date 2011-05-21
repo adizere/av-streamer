@@ -17,6 +17,8 @@ void shutdown_server(int sig)
     printf("\n\tServer shutting down..\n");
     
     // TODO add clean-up code here
+
+    // TODO stop client handlers, destroy queues, destroy mutexes
     
     int i;
     for(i = 0; i < MAX_DCCP_CONNECTION_BACK_LOG; ++i)
@@ -184,6 +186,11 @@ int main(int argc, char* argv[])
         dp->rem_addr = rem_addr;
         fifo* fp = create_fifo(FIFO_DEFAULT_CAPACITY);
         dp->private_fifo = fp;
+        pthread_mutex_t* pfifo_mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+        rc = pthread_mutex_init(pfifo_mutex, NULL);
+        if(rc < 0)
+            error("Unable to create the mutex for client handler fifo!", 1);
+        dp->p_fifo_mutex = pfifo_mutex;
 
         rc = pthread_create(&(thread_pool[index].tid), NULL, ch_thread, (void*)dp);
         if(rc < 0)

@@ -10,7 +10,9 @@
 
 
 int socket_handle;      /* global socket */
+
 fifo* packets_queue;
+pthread_mutex_t p_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 void sigint_handler(int signal) {
@@ -27,27 +29,33 @@ void sigint_handler(int signal) {
 /* Thread used to receive incoming data streams */
 void* recv_thread(void*)
 {
-    rtp_packet packet;
-    packets_queue = create_fifo(FIFO_DEFAULT_CAPACITY);
-    char buff[512];
+    fifo_elem fe;
+    rtp_packet* packet = (rtp_packet*)&fe;
 
-    /* allocate space for payload if needed.. */
-    //packet->payload = (packet_payload*)malloc(sizeof(packet_payload));
+    packets_queue = create_fifo(FIFO_DEFAULT_CAPACITY);
 
     // add a method to determine when we should stop recv()-ing
     while(1)
     {
-        //int rec_size = recv(socket_handle, &packet, sizeof(rtp_packet), 0);
-        //enqueue(packets_queue, packet);
-
-        int rc = recv(socket_handle, buff, 512, 0);
+        int rc = recv(socket_handle, &fe, sizeof(fifo_elem), 0);
         if (rc == 0)                                    /* peer has shutdown the socket */
         {
             printf("Server was shutdown.. \n");
             break;
         }
-        printf("from server:%s\n",buff);
+
+        LOCK(&p_queue_mutex);
+
+        rc = enqueue(packets_queue, fe);//TODO handle this return code
+
+        UNLOCK(&p_queue_mutex);
+
+        // dummy code begin
+        // TODO move this code in a new thread that dequeues packets and displays the video
+        printf("Packet: seq:%d payload:%d\n",packet->header.seq, packet->payload);
         fflush(stdout);
+
+        // dummy code end
     }
     
     destroy_fifo(packets_queue);
@@ -102,17 +110,6 @@ int main(int argc, char** argv)
     if(rc < 0)
         error("Error creating Send thread\n", 1);
 
-
-//    number = htonl(number);
-//    do
-//    {
-//        printf(".");
-//        status = send(socket_handle, &number, sizeof(int32_t), 0);
-//    }
-//    while((status<0)&&(errno == EAGAIN));
-
-//    char receive_buff[100];
-//    int rec_size = recv(socket_handle, receive_buff, 100, 0);
 
     pthread_join(rthread_id, NULL);
     pthread_join(sthread_id, NULL);

@@ -52,15 +52,26 @@ void* ch_thread(void* data)
 /* Thread used to send audio video streams */
 void* send_thread(void* data)
 {
+    int rc, seq;
     ch_data* dp = (ch_data*)data;
+    pthread_mutex_t* p_fifo_mutex = dp->p_fifo_mutex;
     
     int client_sock = dp->sock;
-    const char* filename = dp->filename;
 
-    fifo_elem* fe;
+    fifo_elem fe;
+    rtp_packet* packet = (rtp_packet*)&fe;
+
+    seq = 0;
     while(1)
     {
-        if (dequeue(dp->private_fifo, fe) == -1)
+
+        LOCK(p_fifo_mutex);
+
+        rc = dequeue(dp->private_fifo, &fe);
+
+        UNLOCK(p_fifo_mutex);
+
+        if (rc == -1)
         {
             usleep(5 * dp->st_rate);
             continue;
@@ -69,7 +80,16 @@ void* send_thread(void* data)
         /* Create new rtp packet to be sent..
         */
         // TODO: sizeof(fe) is wrong..
-        int rc = send(client_sock, fe, sizeof(fe), 0);
+        // TODO: fill protocol information here
+
+        // dummy code begin
+        packet->header.seq = seq;
+        seq++;
+
+        printf("Packet: seq:%d payload:%d\n",packet->header.seq, packet->payload);
+        // dummy code end
+
+        int rc = send(client_sock, &fe, sizeof(fe), 0);
         usleep(dp->st_rate);
     }
 }
@@ -104,10 +124,27 @@ void* recv_thread(void* data)
 void* stream_read_thread(void* data)
 {
     ch_data* dp = (ch_data*)data;
-    
+    fifo* private_fifo = dp->private_fifo;
+    pthread_mutex_t* p_fifo_mutex = dp->p_fifo_mutex;
+
+    fifo_elem fe;
+    rtp_packet* packet = (rtp_packet*)&fe;
     /* Adi:
      * Johannes should open dp->filename and populate the queue held in
      * dp->private_fifo;
      * Example: enqueue(dp->private_fifo, pkg), where pkg is of type rtp_packet
      */
+
+    // dummy code begin
+    for(int i = 1; i <= 10; ++i)
+    {
+        packet->payload = i; // TODO fill payload here
+
+        LOCK(p_fifo_mutex);
+
+        enqueue(private_fifo, fe);
+
+        UNLOCK(p_fifo_mutex);
+    }
+    // dummy code end
 }

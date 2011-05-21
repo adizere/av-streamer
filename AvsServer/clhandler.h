@@ -11,7 +11,6 @@
 #include "globals.h"
 #include "../common/common.h"
 
-//TODO - add queue and queue protection(mutex)
 // client handler data
 typedef struct
 {
@@ -20,7 +19,11 @@ typedef struct
     useconds_t st_rate;                 /* server transmission rate - interpreted in microseconds */
     const char* filename;
     struct sockaddr_in rem_addr;
+
     fifo* private_fifo;                 /* the queue used for this particular client */
+    pthread_mutex_t* p_fifo_mutex;       /* what thread owns the queue ? */
+
+    // TODO add fifo+mtx for feedback information
 } ch_data;
 
 
