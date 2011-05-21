@@ -22,6 +22,11 @@
  * Libraries: -lavformat -lavcodec -lavutil -lswscale -lz -lm -lSDL
  * 
  * =============================================================================
+ *
+ * You may want to check http://www.earth-touch.com/ for some free audio-video
+ * nature footages, excellent for testing this aplication.
+ *
+ * =============================================================================
  * 
  */
 
@@ -46,6 +51,9 @@ extern "C"
 #include <SDL/SDL.h>
 
 
+#define SDL_AUDIO_BUFFER_SIZE 1024
+
+
 ///
 /// \todo We could share this code between AvsServer and AvsClient by means
 ///       of some defines, to eliminate server code from AvsClient component.
@@ -57,13 +65,69 @@ enum AVManagerMode
 };
 
 
-/** Codec initialization information
- *  send over the network to the client. */
+///
+/// \brief Types of AVPackage's.
+///
+enum AVMediaPacketType
+{
+    AVPacketVideoType,
+    AVPacketAudioType,
+    AVPacketUnknownType
+};
+
+
+///
+/// \brief Wrapper for AVPackage with some additional information.
+///
+typedef struct _AVMediaPacket
+{
+    AVPacket packet;
+    AVMediaPacketType packet_type;
+} __attribute__((packed)) AVMediaPacket;
+
+
+#if defined (__AvsClient__)
+
+/// \brief Audio packets queue list. The mutex and condition are because SDL
+///        is running the audio process as a separate thread.
+///        If we don't lock the queue properly, data could get compromised.
+class PacketQueue
+{
+private:
+    AVPacketList *first_pkt, *last_pkt; ///< Linked list storing audio packets.
+    int nb_packets;                     
+    int size;                           ///< This we get from packet->size.
+    SDL_mutex *mutex;
+    SDL_cond *cond;
+
+public:
+    PacketQueue ();
+    bool init ();
+    bool put (AVPacket *packet);
+    int get (AVPacket *packet, int block);
+    void set_quit ();
+    void close ();
+    ~PacketQueue ();
+
+private:
+    void cleanup ();
+    friend int decode_interrupt_cb (void);
+};
+
+#endif /* defined (__AvsClient__) */
+
+
+/// Codec initialization information
+/// send over the network to the client.
 typedef struct _streaminfo
 {
     int width;
     int height;
     PixelFormat pix_fmt;
+    CodecID codec_id;           ///< Video codec ID.
+    CodecID audio_codec_id;     ///< Audio codec ID.
+    int freq;                   ///< Audio frequency in samples per second (sample rate).
+    Uint8 channels;             ///< Number of channels: 1 mono, 2 stereo.
 } __attribute__((packed)) streaminfo ;
 
 
@@ -76,31 +140,42 @@ private:
     char *filename;                     ///< Name of the file that is currently processed from disk.
     AVManagerMode mode;                 ///< What are we doing here?
     streaminfo *stream_info;            ///< Information about the current stream;
+    int video_stream_index;
+    int audio_stream_index;
+    AVCodecContext *codec_ctx;          ///< Video codec context.
+    AVCodec *codec;                     ///< Video codec.
+    AVCodecContext *audio_codec_ctx;    ///< Audio codec context.
+    AVCodec *audio_codec;               ///< Audio codec.
 #if defined (__AvsServer__)
     AVFormatContext *format_ctx;        ///< Media file handle and context.
-    AVCodecContext *codec_ctx;          ///< Codec context.
-    AVCodec *codec;
-#elif defined (__AvsClient__)
+#endif /*defined (__AvsServer__) */
+#if defined (__AvsClient__)
     struct SwsContext *sws_ctx;
     SDL_Surface *screen;
     SDL_Overlay *yuv_overlay;
-#endif
-    
+    SDL_AudioSpec wanted_audio_spec;    ///< Desired audio specification (what we wish to get).
+    SDL_AudioSpec obtained_audio_spec;  ///< Actual obtained audio specification (what we actually get).
+    PacketQueue audio_packet_queue;     ///< Audio packet queue.
+#endif /* defined (__AvsClient__) */
+
 public:
     AVManager (AVManagerMode mode);
 #if defined (__AvsServer__)
     bool init_send (char *filename);
     bool get_stream_info (streaminfo *stream_info);
-    bool read_packet_from_file (AVPacket *packet);
+    bool read_packet_from_file (AVMediaPacket *media_packet);
     void end_send ();
-#elif defined (__AvsClient__)
+#endif /*defined (__AvsServer__) */
+#if defined (__AvsClient__)
     bool init_recv (streaminfo *stream_info);
-    bool play_frame (AVFrame *frame);
+    bool play_video_packet (AVMediaPacket *media_packet);
+    bool play_audio_packet (AVMediaPacket *media_packet);
     void end_recv ();
-#else
-#warning "Why do you need AVManager after all?"
+#endif /* defined (__AvsClient__) */
+#if !defined (__AvsServer__) && !defined (__AvsClient__)
+#error "Why do you need AVManager after all?"
 #endif
-    static void dealloc_packet (AVPacket *packet);
+    static void free_packet (AVMediaPacket *media_packet);
     ~AVManager ();
 };
 
