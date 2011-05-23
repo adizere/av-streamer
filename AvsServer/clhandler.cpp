@@ -62,7 +62,7 @@ void* send_thread(void* data)
     rtp_packet* packet = create_packet();
 
     sequence_nr = SEQUENCE_START;
-    timestamp_nr = 1;
+    timestamp_nr = TIMESTAMP_START;
     while(1)
     {
         memset(packet->payload, 0, PAYLOAD_MAX_SIZE);

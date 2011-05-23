@@ -37,12 +37,24 @@ void sigint_handler(int signal) {
 /* Thread used to receive incoming data streams */
 void* recv_thread(void*)
 {
+    /* use the same packet in every recv() */
     rtp_packet* packet = create_packet();
     
-    int last_sequence = SEQUENCE_START;
+    /* some necessary variables */
+    int last_PUC_seq = 0;
+    int last_timestamp = TIMESTAMP_START - 1;
+    AVMediaPacket PUC; /* Package Under Construction */
 
+    
+    /* Adi: Same as the server, did not test anything because I can't compile, error:
+     * ../common/audiovideo.h:180:2: error: #error "Why do you need AVManager after all?"
+     * 
+     * TODO: test this thread!
+     * TODO2: find a method to know when we should stop recv()-ing, probably through select() ?
+     */
     while(1)
     {
+        memset(packet, 0, sizeof(rtp_packet));
         int rc = recv(socket_handle, packet, sizeof(rtp_packet), 0);
         if (rc == 0)  /* peer has shutdown the socket */
         {
@@ -51,18 +63,61 @@ void* recv_thread(void*)
         }
         
         
-
-        LOCK(&p_queue_mutex);
-
-        rc = enqueue(av_packets_queue, packet->payload);
-        if (rc < 0)
-            error("The queue is full - adjust the FIFO_DEFAULT_CAPACITY to a bigger value. Quitting!", 1);
-
-        UNLOCK(&p_queue_mutex);
+        /* 
+         * Now cometh the RTP protocol */
+        if (packet->header.timestamp <= last_timestamp) {
+            /* dropping the packet */
+            continue;
+        }
         
-        if (packet->header.M == MARKER_LAST_PACKET)
-            break;
+        if (packet->header.M == MARKER_FIRST) {
+            /* this is the first fragment from a bigger packet */
+            
+            // PUC = instantiateAVMediaPacket();
+            continue;
+        }
+        
+        if (packet->header.M == MARKER_ALONE) {
+            /* this is the whole packet, no fragmentation was necessary */
+        
+            fifo_elem *fe = (fifo_elem*)&(packet->payload);
+            LOCK(&p_queue_mutex);
+
+            rc = enqueue(av_packets_queue, *fe);
+            if (rc < 0)
+                error("The queue is full - adjust the FIFO_DEFAULT_CAPACITY to a bigger value. Quitting!", 1);
+
+            UNLOCK(&p_queue_mutex);
+            
+//            free(PUC) if necessary
+            continue;
+        }
+        
+        if (packet->header.seq - last_PUC_seq == 1) {
+            /* this is a completing fragment for the packet in PUC */
+            
+            // put in PUC packet->payload
+            
+            if (packet->header.M == MARKER_LAST) {
+                /* this is the last fragment of the packet from PUC */
+                
+                LOCK(&p_queue_mutex);
+                
+                rc = enqueue(av_packets_queue, PUC);
+                if (rc < 0)
+                    error("The queue is full - adjust the FIFO_DEFAULT_CAPACITY to a bigger value. Quitting!", 1);
+                
+                UNLOCK(&p_queue_mutex);
+                
+                last_timestamp = packet->header.timestamp;
+            } else {
+                /* not the last fragment.. more needed */
+                
+                last_PUC_seq = packet->header.timestamp;
+            }
+        }
     }
+    
     printf("Transmission from server finished.\n");
     flag_transmission_finished = 1;
 }

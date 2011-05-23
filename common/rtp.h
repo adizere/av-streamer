@@ -46,8 +46,10 @@ struct _rtp_packet {
 };
 
 
-#define SSRC_DEFAULT_ID 25555       /* for ssrc field */
+#define TIMESTAMP_START 1
 #define SEQUENCE_START 25555        /* sequence number shouldn't start at 0 */
+
+#define SSRC_DEFAULT_ID 25555       /* for ssrc field */
 #define RTP_VERSION 1               /* our first version */
 #define MARKER_LAST_PACKET 2
 
