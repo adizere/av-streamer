@@ -77,12 +77,16 @@ enum AVMediaPacketType
 
 
 ///
-/// \brief Wrapper for AVPackage with some additional information.
+/// \brief Header for AVPackage with some additional media information.
 ///
 typedef struct _AVMediaPacket
 {
-    AVPacket packet;
+    int entire_media_packet_size;           ///< Size of entire media packet (header + data).
     AVMediaPacketType packet_type;
+    AVPacket packet;
+    int data_size;                          ///< Size of data from media packet (just data).
+                                            ///< Actually duplicated from packet field.
+    // Actuall media data follows right here...
 } __attribute__((packed)) AVMediaPacket;
 
 
@@ -163,7 +167,7 @@ public:
 #if defined (__AvsServer__)
     bool init_send (char *filename);
     bool get_stream_info (streaminfo *stream_info);
-    bool read_packet_from_file (AVMediaPacket *media_packet);
+    bool read_packet_from_file (AVMediaPacket **media_packet);
     void end_send ();
 #endif /*defined (__AvsServer__) */
 #if defined (__AvsClient__)
