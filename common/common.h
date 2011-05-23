@@ -49,7 +49,6 @@ static void error(const char* msg, int exit_flag = 0)
 
 #include "fifo.h"
 #include "rtp.h"
-//#include "audiovideo.h"
+#include "audiovideo.h"
 
 #endif	/* _COMMON_H */
-
