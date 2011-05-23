@@ -11,8 +11,10 @@
 
 int socket_handle;      /* global socket */
 
-fifo* packets_queue;
+fifo* av_packets_queue;
 pthread_mutex_t p_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int flag_transmission_finished = 0;
 
 
 void sigint_handler(int signal) {
@@ -22,6 +24,9 @@ void sigint_handler(int signal) {
     
     // close the player
     
+    
+    destroy_fifo(av_packets_queue);
+    
     exit(EXIT_SUCCESS);
 }
 
@@ -29,36 +34,33 @@ void sigint_handler(int signal) {
 /* Thread used to receive incoming data streams */
 void* recv_thread(void*)
 {
-    fifo_elem fe;
-    rtp_packet* packet = (rtp_packet*)&fe;
+    rtp_packet* packet = create_packet();
 
-    packets_queue = create_fifo(FIFO_DEFAULT_CAPACITY);
-
-    // add a method to determine when we should stop recv()-ing
     while(1)
     {
-        int rc = recv(socket_handle, &fe, sizeof(fifo_elem), 0);
-        if (rc == 0)                                    /* peer has shutdown the socket */
+        int rc = recv(socket_handle, packet, sizeof(rtp_packet), 0);
+        if (rc == 0)  /* peer has shutdown the socket */
         {
             printf("Server was shutdown.. \n");
             break;
         }
+        
+        /* determine where to enqueue */
+            
 
         LOCK(&p_queue_mutex);
 
-        rc = enqueue(packets_queue, fe);//TODO handle this return code
+        rc = enqueue(av_packets_queue, packet->payload);
+        if (rc < 0)
+            error("The queue is full - adjust the FIFO_DEFAULT_CAPACITY to a bigger value. Quitting!", 1);
 
         UNLOCK(&p_queue_mutex);
-
-        // dummy code begin
-        // TODO move this code in a new thread that dequeues packets and displays the video
-        printf("Packet: seq:%d payload:%d\n",packet->header.seq, packet->payload);
-        fflush(stdout);
-
-        // dummy code end
+        
+        if (packet->header.M == MARKER_LAST_PACKET)
+            break;
     }
-    
-    destroy_fifo(packets_queue);
+    printf("Transmission from server finished.\n");
+    flag_transmission_finished = 1;
 }
 
 
@@ -81,6 +83,16 @@ void* send_thread(void*)
 }
 
 
+/* Take packets from the audio and video queues */
+void* play_thread(void*)
+{
+    while(flag_transmission_finished == 0)
+    {
+        
+    }
+}
+
+
 int main(int argc, char** argv)
 {
     signal(SIGINT, sigint_handler);
@@ -100,8 +112,12 @@ int main(int argc, char** argv)
     if (result < 0)
         error("Error connecting to the Server", 1);
 
-    pthread_t rthread_id, sthread_id;
-    /* initializing the recv and send threads */
+    /* general declares and initializations */
+    pthread_t rthread_id, sthread_id, pthread_id;
+    av_packets_queue = create_fifo(FIFO_DEFAULT_CAPACITY);
+    
+    
+    /* initializing the recv, send and play threads */
     int rc = pthread_create(&rthread_id, NULL, recv_thread, NULL);
     if(rc < 0)
         error("Error creating Receive thread\n", 1);
@@ -109,6 +125,10 @@ int main(int argc, char** argv)
     rc = pthread_create(&sthread_id, NULL, send_thread, NULL);
     if(rc < 0)
         error("Error creating Send thread\n", 1);
+    
+    rc = pthread_create(&pthread_id, NULL, play_thread, NULL);
+    if(rc < 0)
+        error("Error creating Play thread\n", 1);
 
 
     pthread_join(rthread_id, NULL);
@@ -116,6 +136,10 @@ int main(int argc, char** argv)
     
     /* TODO: error handling for all system calls */
     printf("Success\n");
+    
+    /* cleanup */
+    sigint_handler(0);
+    
     return (EXIT_SUCCESS);
 }
 

@@ -12,7 +12,7 @@
 #include "rtp.h"
 
 // Adi, update: we should change the typedef from rtp_packet to AvPaacket or something similar
-typedef rtp_packet fifo_elem; // TODO change to payload
+typedef rtp_payload fifo_elem; // TODO change to payload
 
 
 typedef struct _fifo

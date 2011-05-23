@@ -9,6 +9,7 @@
 #define	_RTP_H
 
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef struct _rtp_header rtp_header;
 struct _rtp_header {
@@ -33,6 +34,7 @@ struct _rtp_header {
 
 } __attribute__((packed));
 
+//TODO: redefined rtp_payload to the actual payload
 typedef int rtp_payload;
 
 typedef struct _rtp_packet rtp_packet;
@@ -44,8 +46,13 @@ struct _rtp_packet {
 
 #define SSRC_DEFAULT_ID 25555       /* for ssrc field */
 #define SEQUENCE_START 25555        /* sequence number shouldn't start at 0 */
-#define RTP_VERSION 1
-#define PAYLOAD_TYPE 1
+#define RTP_VERSION 1               /* our first version */
+#define MARKER_LAST_PACKET 2
+#define MARKER_DEFAULT 1
+#define PAYLOAD_DEFAULT 1
 
+
+/* Used to instantiate a new rtp_packet with it's default values */
+rtp_packet* create_packet();
 
 #endif	/* _RTP_H */
