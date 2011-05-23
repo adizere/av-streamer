@@ -11,17 +11,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define PAYLOAD_MAX_SIZE 1024
+
 typedef struct _rtp_header rtp_header;
 struct _rtp_header {
     /* version */
     uint16_t version;
 
     /* flags */
-    uint8_t P;         /* padding */
-    uint8_t X;         /* extension header presence */
-    uint8_t CC;        /* Contributing sources count */
-    uint8_t M;         /* Marker - if packet has a special relevance */
-    uint8_t PT;        /* Payload type */
+    uint8_t P;          /* Padding */
+    uint8_t X;          /* Extension header presence */
+    uint8_t CC;         /* Contributing sources count */
+    uint8_t M;          /* Marker - if packet has a special relevance */
+    uint8_t PT;         /* Payload type */
 
     /* sequence number - increasing for every RTP Packet */
     uint16_t seq;
@@ -34,8 +36,8 @@ struct _rtp_header {
 
 } __attribute__((packed));
 
-//TODO: redefined rtp_payload to the actual payload
-typedef int rtp_payload;
+
+typedef char rtp_payload[PAYLOAD_MAX_SIZE];
 
 typedef struct _rtp_packet rtp_packet;
 struct _rtp_packet {
@@ -49,11 +51,14 @@ struct _rtp_packet {
 #define RTP_VERSION 1               /* our first version */
 #define MARKER_LAST_PACKET 2
 
-#define MARKER_DEFAULT MARKER_ALONE
-#define MARKER_ALONE 0
-#define MARKER_MORE 1
+/* 
+ * Definitions for the Marker flag types follows */
+#define MARKER_ALONE 0          /* The packet is not fragmented*/
+#define MARKER_FIRST 1          /* The first fragment of a fragmented packet */
+#define MARKER_LAST 2           /* The last fragment of a fragmented packet */
+#define MARKER_FRAGMENT 3       /* The contained fragment of a fragmented packet */
 
-#define PAYLOAD_DEFAULT 1
+#define PAYLOAD_TYPE_DEFAULT 1
 
 
 /* Used to instantiate a new rtp_packet with it's default values */

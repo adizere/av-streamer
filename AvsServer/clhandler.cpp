@@ -52,19 +52,21 @@ void* ch_thread(void* data)
 /* Thread used to send audio video streams */
 void* send_thread(void* data)
 {
-    int rc, seq;
+    int rc, sequence_nr, timestamp_nr;
     ch_data* dp = (ch_data*)data;
     pthread_mutex_t* p_fifo_mutex = dp->p_fifo_mutex;
     
     int client_sock = dp->sock;
 
     fifo_elem fe;
-    rtp_packet* packet = (rtp_packet*)&fe;
+    rtp_packet* packet = create_packet();
 
-    seq = 0;
+    sequence_nr = SEQUENCE_START;
+    timestamp_nr = 1;
     while(1)
     {
-
+        memset(packet->payload, 0, PAYLOAD_MAX_SIZE);
+        
         LOCK(p_fifo_mutex);
 
         rc = dequeue(dp->private_fifo, &fe);
@@ -79,17 +81,43 @@ void* send_thread(void* data)
         
         /* Create new rtp packet to be sent..
         */
-        // TODO: sizeof(fe) is wrong..
-        // TODO: fill protocol information here
+        
+        /* Adi: Nu-mi merge ceva la compilare legat de audiovideo.h si NU am 
+         * testat crearea pachetelor si punerea lor pe retea.. deci e un TODO mare aici:
+         */
+        if (sizeof(fe) > PAYLOAD_MAX_SIZE) {
+            int done = 0;
+            
+            while(done < sizeof(fe)) {
+                memset(packet->payload, 0, PAYLOAD_MAX_SIZE);
+                memcpy(packet->payload, (char*)&fe + done, PAYLOAD_MAX_SIZE - 1);
+                
+                packet->header.seq = sequence_nr++;
+                packet->header.timestamp = timestamp_nr;
+                packet->header.M = done == 0 ? MARKER_FIRST : MARKER_FRAGMENT;
+                 
+                done = done + PAYLOAD_MAX_SIZE - 1;
+                
+                if (done >= sizeof(fe))
+                    packet->header.M = MARKER_LAST;
+                
+                int rc = send(client_sock, packet, sizeof(packet), 0);
+                if (rc < 0)
+                    error("Error sending a packet to the client");
+            }
+        } else {
+            packet->header.seq = sequence_nr++;
+            packet->header.timestamp = timestamp_nr;
+            packet->header.M = MARKER_ALONE;
+            
+            memcpy(packet->payload, (char*)&fe, sizeof(fe));
+            
+            int rc = send(client_sock, packet, sizeof(packet), 0);
+            if (rc < 0)
+                error("Error sending a packet to the client");
+        }
+        timestamp_nr++;
 
-        // dummy code begin
-        packet->header.seq = seq;
-        seq++;
-
-        printf("Packet: seq:%d payload:%d\n",packet->header.seq, packet->payload);
-        // dummy code end
-
-        int rc = send(client_sock, &fe, sizeof(fe), 0);
         usleep(dp->st_rate);
     }
 }
@@ -138,7 +166,6 @@ void* stream_read_thread(void* data)
     // dummy code begin
     for(int i = 1; i <= 10; ++i)
     {
-        packet->payload = i; // TODO fill payload here
 
         LOCK(p_fifo_mutex);
 

@@ -10,9 +10,10 @@
 
 #include <stdlib.h>
 #include "rtp.h"
+#include "audiovideo.h"
 
 // Adi, update: we should change the typedef from rtp_packet to AvPaacket or something similar
-typedef rtp_payload fifo_elem; // TODO change to payload
+typedef AVMediaPacket fifo_elem; // TODO change to payload
 
 
 typedef struct _fifo
