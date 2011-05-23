@@ -14,6 +14,9 @@ int socket_handle;      /* global socket */
 fifo* av_packets_queue;
 pthread_mutex_t p_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* This flag is marked when the recv_thread has finished receiving from the server
+ * In this way, we know when we should stop trying to dequeue from av_packets_queue
+ */
 int flag_transmission_finished = 0;
 
 
@@ -44,9 +47,6 @@ void* recv_thread(void*)
             printf("Server was shutdown.. \n");
             break;
         }
-        
-        /* determine where to enqueue */
-            
 
         LOCK(&p_queue_mutex);
 
@@ -86,9 +86,22 @@ void* send_thread(void*)
 /* Take packets from the audio and video queues */
 void* play_thread(void*)
 {
+    int rc;
+    fifo_elem fe;
     while(flag_transmission_finished == 0)
     {
+        LOCK(&p_queue_mutex);
         
+        rc = dequeue(av_packets_queue, &fe);
+        
+        UNLOCK(&p_queue_mutex);
+        
+        if (rc < 0) {
+             // usleep(1000);
+             continue;
+        }
+        
+        // play...
     }
 }
 

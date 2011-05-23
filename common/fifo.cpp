@@ -29,20 +29,24 @@ int enqueue(fifo* fp, fifo_elem el)
         fp->last = 0;
 
     fp->elems[fp->last] = el;
+    
+    return 0;
 }
 
 int dequeue(fifo* fp, fifo_elem* el)
 {
-    if(0 == fp->size) // no elems
+    if (0 == fp->size) // no elems
         return -1;
 
     *el = fp->elems[fp->first];
-     fp->size--;
+    fp->size--;
 
-    if(fp->first < (fp->capacity - 1)) // establish the begin of the fifo
+    if (fp->first < (fp->capacity - 1)) // establish the begin of the fifo
         fp->first++;
     else
         fp->first = 0;
+
+    return 0;
 }
 
 void destroy_fifo(fifo* fp)
