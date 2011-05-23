@@ -49,8 +49,9 @@ struct _rtp_packet {
 #define RTP_VERSION 1               /* our first version */
 #define MARKER_LAST_PACKET 2
 
+#define MARKER_DEFAULT MARKER_ALONE
 #define MARKER_ALONE 0
-#define MARKER_MORE 1yh 
+#define MARKER_MORE 1
 
 #define PAYLOAD_DEFAULT 1
 
