@@ -118,7 +118,6 @@ int main(int argc, char* argv[])
     signal(SIGINT, shutdown_server);
 
     printf("Server started on port: %d\n", LOCAL_PORT);
-    g_sum = 0;
 
     /* DCCP Server inititialization
      * This is the rendez-vous socket
@@ -138,8 +137,8 @@ int main(int argc, char* argv[])
         error("Error setting socket option!\n");
 
     addr.sin_family = PF_INET;
-    addr.sin_port = htons( LOCAL_PORT );
-    addr.sin_addr.s_addr = htonl( INADDR_ANY );
+    addr.sin_port = htons(LOCAL_PORT);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 
     /* Bind the socket to the local address and port. */
@@ -176,22 +175,28 @@ int main(int argc, char* argv[])
         client_sock = accept(rv_sock, (struct sockaddr *)&rem_addr, &rem_len);
         if(client_sock < 0)
             error("Socket accept() error!\n", 1);
+        
 
+        /* 
+         * Initialize client handler data */
         ch_data* dp = (ch_data*) malloc(sizeof(ch_data));
-
+        
         dp->sock = client_sock;
         dp->pool_index = index;
         dp->filename = file;
         dp->st_rate = st_rate;
         dp->rem_addr = rem_addr;
-        fifo* fp = create_fifo(FIFO_DEFAULT_CAPACITY);
-        dp->private_fifo = fp;
+        dp->private_fifo = create_fifo(FIFO_DEFAULT_CAPACITY);
+        
         pthread_mutex_t* pfifo_mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+        
         rc = pthread_mutex_init(pfifo_mutex, NULL);
         if(rc < 0)
             error("Unable to create the mutex for client handler fifo!", 1);
         dp->p_fifo_mutex = pfifo_mutex;
 
+        /* 
+         * Now create the thread which will manage everythin related to this client */
         rc = pthread_create(&(thread_pool[index].tid), NULL, ch_thread, (void*)dp);
         if(rc < 0)
             error("Unable to create thread!\n", 1);

@@ -20,7 +20,6 @@ typedef struct
 
 static client_thread thread_pool[MAX_DCCP_CONNECTION_BACK_LOG];
 
-static int32_t g_sum = 0;
 static int rv_sock;
 static pthread_mutex_t server_mutex = PTHREAD_MUTEX_INITIALIZER;
 

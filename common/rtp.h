@@ -23,10 +23,10 @@ struct _rtp_header {
     uint8_t M;         /* Marker - if packet has a special relevance */
     uint8_t PT;        /* Payload type */
 
-    /* sequence number - increasing for every individual packet */
+    /* sequence number - increasing for every RTP Packet */
     uint16_t seq;
 
-    /* timestamp */
+    /* timestamp - increasing for each AVMediaPacket */
     uint32_t timestamp;
 
     /* SSRC identifier - source identifier */
@@ -48,7 +48,10 @@ struct _rtp_packet {
 #define SEQUENCE_START 25555        /* sequence number shouldn't start at 0 */
 #define RTP_VERSION 1               /* our first version */
 #define MARKER_LAST_PACKET 2
-#define MARKER_DEFAULT 1
+
+#define MARKER_ALONE 0
+#define MARKER_MORE 1yh 
+
 #define PAYLOAD_DEFAULT 1
 
 

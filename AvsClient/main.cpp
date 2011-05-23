@@ -38,6 +38,8 @@ void sigint_handler(int signal) {
 void* recv_thread(void*)
 {
     rtp_packet* packet = create_packet();
+    
+    int last_sequence = SEQUENCE_START;
 
     while(1)
     {
@@ -47,6 +49,8 @@ void* recv_thread(void*)
             printf("Server was shutdown.. \n");
             break;
         }
+        
+        
 
         LOCK(&p_queue_mutex);
 
@@ -147,7 +151,6 @@ int main(int argc, char** argv)
     pthread_join(rthread_id, NULL);
     pthread_join(sthread_id, NULL);
     
-    /* TODO: error handling for all system calls */
     printf("Success\n");
     
     /* cleanup */
