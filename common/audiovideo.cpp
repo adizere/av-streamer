@@ -404,32 +404,48 @@ bool AVManager::get_stream_info (streaminfo *stream_info)
 
 /**
     \brief You must dealloc the packet after reading it from the file.
+           We'll build here a contiguous memory area with an AVMediaPacket header.
     @return 0 if OK, < 0 on error or end of file
 */
-bool AVManager::read_packet_from_file (AVMediaPacket *media_packet)
+bool AVManager::read_packet_from_file (AVMediaPacket **media_packet)
 {
     int frame_finished = 0;
+    AVPacket packet;
+    AVMediaPacket *media_header = NULL;
     
     if (media_packet == NULL) {
         fprintf (stderr, "Error: media packet storage is NULL.\n");
         return false;
     }
+
+    *media_packet = NULL;
+    memset ((void *)&packet, 0, sizeof(AVPacket));
     
     // Read media packet (audio/video).
 
-    if (av_read_frame (this->format_ctx, &media_packet->packet) < 0) {
+    if (av_read_frame (this->format_ctx, &packet) < 0) {
         // Error or end of file.
         return false;
     }
 
-    // Fill in the packet attributes with some basic information.
+    media_header = (AVMediaPacket *)malloc (sizeof (AVMediaPacket) + packet.size * sizeof (uint8_t));
 
-    if (media_packet->packet.stream_index == this->video_stream_index)
-        media_packet->packet_type = AVPacketVideoType;
-    else if (media_packet->packet.stream_index == this->audio_stream_index)
-        media_packet->packet_type = AVPacketAudioType;
-    else media_packet->packet_type = AVPacketUnknownType;
+    // Fill in the media packet attributes with some basic information.
 
+    media_header->entire_media_packet_size = sizeof (AVMediaPacket) + packet.size * sizeof (uint8_t);
+
+    if (packet.stream_index == this->video_stream_index)
+        media_header->packet_type = AVPacketVideoType;
+    else if (packet.stream_index == this->audio_stream_index)
+        media_header->packet_type = AVPacketAudioType;
+    else media_header->packet_type = AVPacketUnknownType;
+
+    memcpy ((void *)&media_header->packet, (const void *)&packet, sizeof(packet));
+    media_header->data_size = packet.size;
+    memcpy (((unsigned char *)(media_header))+sizeof(AVMediaPacket), (const void *)packet.data, packet.size);
+
+    *media_packet = media_header;
+    
     return true;
 }
 
@@ -686,8 +702,11 @@ void AVManager::end_recv ()
 
 void AVManager::free_packet (AVMediaPacket *media_packet)
 {
-    if (media_packet)
-        av_free_packet (&media_packet->packet);
+    if (media_packet == NULL)
+        return;
+    
+    av_free_packet (&media_packet->packet);
+    free (media_packet);
 }
 
 AVManager::~AVManager ()
