@@ -58,14 +58,14 @@ void handle_cmd_args(int argc, char** argv, char** file, useconds_t* st_rate)
 ///
 /// \brief In order to test this, you'll have to set __AvsClient__ and __AvsServer__ defines.
 ///
-/*int audiovideo_api_test()
+int audiovideo_api_test()
 {
     // Server side initialization.
 
     AVManager mgr_server (AVSenderMode);
     streaminfo si;
 
-    if (mgr_server.init_send ("/home/hani/tomandjerry.avi") == false)
+    if (mgr_server.init_send ("/home/hani/nature.avi") == false)
         return -1;
     
     if (mgr_server.get_stream_info (&si) == false)
@@ -75,7 +75,7 @@ void handle_cmd_args(int argc, char** argv, char** file, useconds_t* st_rate)
 
     AVManager mgr_client (AVReceiverMode);
     streaminfo si_client = {0};
-    AVMediaPacket media_packet = {0};
+    AVMediaPacket *media_packet = NULL;
     si_client = si;
     mgr_client.init_recv (&si);
 
@@ -85,12 +85,13 @@ void handle_cmd_args(int argc, char** argv, char** file, useconds_t* st_rate)
     
     while (mgr_server.read_packet_from_file (&media_packet))
     {
-        if (media_packet.packet_type == AVPacketVideoType)
-            mgr_client.play_video_packet (&media_packet);
+        if (media_packet->packet_type == AVPacketVideoType)
+            mgr_client.play_video_packet (media_packet);
         // experimental audio playing.
-        //if (media_packet.packet_type == AVPacketAudioType)
-        //    mgr_client.play_audio_packet (&media_packet);
-        mgr_client.free_packet (&media_packet);
+        //if (media_packet->packet_type == AVPacketAudioType)
+        //    mgr_client.play_audio_packet (media_packet);
+        mgr_client.free_packet (media_packet);
+        media_packet = NULL;
     }
 
     // Cleanup
@@ -99,7 +100,7 @@ void handle_cmd_args(int argc, char** argv, char** file, useconds_t* st_rate)
     mgr_client.end_recv ();
 
     return 0;
-} */
+}
 
 
 /*
@@ -107,7 +108,6 @@ void handle_cmd_args(int argc, char** argv, char** file, useconds_t* st_rate)
  */
 int main(int argc, char* argv[])
 {
-
     char* file;
     useconds_t st_rate;
     handle_cmd_args(argc, argv, &file, &st_rate);
@@ -214,4 +214,3 @@ int main(int argc, char* argv[])
     printf("Success\n");
     return (EXIT_SUCCESS);
 }
-
