@@ -74,16 +74,21 @@ void* recv_thread(void*)
             /* this is the first fragment from a bigger packet */
             
             // PUC = instantiateAVMediaPacket();
+            int8_t* dest_ptr = (int8_t*) &PUC;
+            memcpy( (void*) dest_ptr, (void*) (packet->payload), sizeof(rtp_payload));
+
             continue;
         }
         
         if (packet->header.M == MARKER_ALONE) {
             /* this is the whole packet, no fragmentation was necessary */
         
-            fifo_elem *fe = (fifo_elem*)&(packet->payload);
+            fifo_elem fe;
+            memcpy((void*) &fe, (void*) (packet->payload), sizeof(fifo_elem));
+
             LOCK(&p_queue_mutex);
 
-            rc = enqueue(av_packets_queue, *fe);
+            rc = enqueue(av_packets_queue, fe);
             if (rc < 0)
                 error("The queue is full - adjust the FIFO_DEFAULT_CAPACITY to a bigger value. Quitting!", 1);
 
@@ -97,6 +102,9 @@ void* recv_thread(void*)
             /* this is a completing fragment for the packet in PUC */
             
             // put in PUC packet->payload
+            int8_t* dest_ptr = (int8_t*)&PUC;
+            dest_ptr += 0; //TODO COMPUTE OFFSET WHERE TO COPY FRAGMENT
+            memcpy( dest_ptr, (void*) (packet->payload), sizeof(rtp_payload));
             
             if (packet->header.M == MARKER_LAST) {
                 /* this is the last fragment of the packet from PUC */
