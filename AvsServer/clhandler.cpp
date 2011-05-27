@@ -95,7 +95,7 @@ void* send_thread(void* data)
                 packet->header.seq = sequence_nr++;
                 packet->header.timestamp = timestamp_nr;
                 packet->header.M = done == 0 ? MARKER_FIRST : MARKER_FRAGMENT;
-                 
+                
                 done = done + PAYLOAD_MAX_SIZE - 1;
                 
                 if (done >= sizeof(fe))
@@ -166,7 +166,6 @@ void* stream_read_thread(void* data)
     // dummy code begin
     for(int i = 1; i <= 10; ++i)
     {
-
         LOCK(p_fifo_mutex);
 
         enqueue(private_fifo, fe);

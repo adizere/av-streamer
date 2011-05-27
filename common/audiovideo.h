@@ -177,7 +177,7 @@ public:
     void end_recv ();
 #endif /* defined (__AvsClient__) */
 #if !defined (__AvsServer__) && !defined (__AvsClient__)
-#error "Why do you need AVManager after all?"
+#error "__AvsServer__ and __AvsClient__ not defined!"
 #endif
     static void free_packet (AVMediaPacket *media_packet);
     ~AVManager ();

@@ -38,7 +38,16 @@ const char* const LOCAL_IP = "127.0.0.1" ;
 
 static void error(const char* msg, int exit_flag = 0)
 {
-    perror(msg);
+    /* sometimes perror() writes Success, example: 
+     * "Please specify the name of the file and the transmission rate as parameters: Success"
+     */
+    
+    if (errno == 0) {
+        fprintf(stderr, "Error: %s\n", msg);
+    } else {
+        perror(msg);
+    }
+    
     fflush(stderr);
     fflush(stdout);
 

@@ -12,7 +12,7 @@
 #include "rtp.h"
 #include "audiovideo.h"
 
-typedef AVMediaPacket fifo_elem; // TODO change to payload
+typedef int fifo_elem; // TODO change to payload
 
 typedef struct _fifo
 {

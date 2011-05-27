@@ -5,7 +5,7 @@ AVLIBS:=-L/usr/local/lib -L/usr/lib -lpthread -lSDL -lavformat -lavcodec -lavuti
 all: clhandler server common
 
 fifo: ../common/fifo.h ../common/fifo.cpp
-	g++ -g -c -o bin/fifo.o ../common/fifo.cpp
+	g++ -g $(CFLAGS) -c -o bin/fifo.o ../common/fifo.cpp
 
 rtp: ../common/rtp.h ../common/rtp.cpp
 	g++ -g -c -o bin/rtp.o ../common/rtp.cpp
