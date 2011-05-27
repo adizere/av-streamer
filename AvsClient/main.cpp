@@ -121,7 +121,7 @@ void* recv_thread(void*)
             } else {
                 /* not the last fragment.. more needed */
                 
-                last_PUC_seq = packet->header.timestamp;
+                last_PUC_seq = packet->header.seq;
             }
         }
     }

@@ -96,7 +96,7 @@ void* send_thread(void* data)
                 if (done >= sizeof(fe))
                     packet->header.M = MARKER_LAST;
                 
-                int rc = send(client_sock, packet, sizeof(packet), 0);
+                int rc = send(client_sock, packet, sizeof(*packet), 0);
                 if (rc < 0)
                     error("Error sending a packet to the client");
             }
