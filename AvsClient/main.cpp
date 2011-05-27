@@ -62,7 +62,6 @@ void* recv_thread(void*)
             break;
         }
         
-        
         /* 
          * Now cometh the RTP protocol */
         if (packet->header.timestamp <= last_timestamp) {
@@ -84,8 +83,9 @@ void* recv_thread(void*)
             /* this is the whole packet, no fragmentation was necessary */
         
             fifo_elem fe;
+            
             memcpy((void*) &fe, (void*) (packet->payload), sizeof(fifo_elem));
-
+            
             LOCK(&p_queue_mutex);
 
             rc = enqueue(av_packets_queue, fe);
@@ -155,20 +155,27 @@ void* play_thread(void*)
 {
     int rc;
     fifo_elem fe;
+    
+    printf("Play thread: \n");
+    
     while(flag_transmission_finished == 0)
     {
         LOCK(&p_queue_mutex);
-        
+
         rc = dequeue(av_packets_queue, &fe);
-        
+
         UNLOCK(&p_queue_mutex);
         
         if (rc < 0) {
-             // usleep(1000);
+             usleep(1000);
              continue;
         }
         
-        // play...
+        char msg[5];
+        memcpy(msg, &fe, sizeof(fe));
+        msg[4] = 0;
+        
+        printf("%s", msg);
     }
 }
 
