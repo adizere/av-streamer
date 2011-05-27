@@ -8,7 +8,7 @@ fifo* create_fifo(size_t capacity)
         fp->size = 0;
         fp->capacity = capacity;
         fp->first = 0;
-        fp->last = 0;
+        fp->last = -1;
         fp->elems = (fifo_elem*) malloc(capacity * sizeof(fifo_elem));
         if(NULL == fp->elems)
             return NULL;
