@@ -79,12 +79,7 @@ void* send_thread(void* data)
             continue;
         }
         
-        /* Create new rtp packet to be sent..
-        */
-        
-        /* Adi: Nu-mi merge ceva la compilare legat de audiovideo.h si NU am 
-         * testat crearea pachetelor si punerea lor pe retea.. deci e un TODO mare aici:
-         */
+        /* Create new rtp packet to be sent.. */
         if (sizeof(fe) > PAYLOAD_MAX_SIZE) {
             int done = 0;
             
@@ -112,7 +107,7 @@ void* send_thread(void* data)
             
             memcpy(packet->payload, (char*)&fe, sizeof(fe));
             
-            int rc = send(client_sock, packet, sizeof(packet), 0);
+            int rc = send(client_sock, packet, sizeof(*packet), 0);
             if (rc < 0)
                 error("Error sending a packet to the client");
         }
@@ -152,7 +147,6 @@ void* recv_thread(void* data)
 void* stream_read_thread(void* data)
 {
     ch_data* dp = (ch_data*)data;
-    fifo* private_fifo = dp->private_fifo;
     pthread_mutex_t* p_fifo_mutex = dp->p_fifo_mutex;
 
     fifo_elem fe;
@@ -164,13 +158,22 @@ void* stream_read_thread(void* data)
      */
 
     // dummy code begin
-    for(int i = 1; i <= 10; ++i)
+    FILE* fh = fopen(dp->filename, "r");
+    if (NULL == fh)
+        error("Unable to open the stream file", 1);
+    
+    while(fread(&fe, sizeof(fe), 1, fh))
     {
         LOCK(p_fifo_mutex);
+        
+        printf("Enqueued: %d\n", fe);
 
-        enqueue(private_fifo, fe);
+        int st = enqueue(dp->private_fifo, fe);
+        if (st < 0)
+            error("[stream_read_thread] Queue is full!", 1);
 
         UNLOCK(p_fifo_mutex);
     }
+    
     // dummy code end
 }
