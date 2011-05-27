@@ -43,7 +43,7 @@ void* recv_thread(void*)
     /* some necessary variables */
     int last_PUC_seq = 0;
     int last_timestamp = TIMESTAMP_START - 1;
-    AVMediaPacket PUC; /* Package Under Construction */
+    fifo_elem PUC; /* Package Under Construction */
 
     
     /* Adi: Same as the server, did not test anything because I can't compile, error:

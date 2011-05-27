@@ -195,6 +195,7 @@ int main(int argc, char* argv[])
             error("Unable to create the mutex for client handler fifo!", 1);
         dp->p_fifo_mutex = pfifo_mutex;
 
+        
         /* 
          * Now create the thread which will manage everythin related to this client */
         rc = pthread_create(&(thread_pool[index].tid), NULL, ch_thread, (void*)dp);
