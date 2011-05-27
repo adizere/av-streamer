@@ -165,8 +165,6 @@ void* stream_read_thread(void* data)
     while(fread(&fe, sizeof(fe), 1, fh))
     {
         LOCK(p_fifo_mutex);
-        
-        printf("Enqueued: %d\n", fe);
 
         int st = enqueue(dp->private_fifo, fe);
         if (st < 0)
