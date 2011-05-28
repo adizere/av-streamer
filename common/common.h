@@ -36,6 +36,9 @@
 const char* const LOCAL_IP = "127.0.0.1" ;
 
 
+#define DBGPRINT(format, ...) fprintf (stderr, format "\n", ## __VA_ARGS__)
+
+
 static void error(const char* msg, int exit_flag = 0)
 {
     /* sometimes perror() writes Success, example: 
@@ -56,8 +59,9 @@ static void error(const char* msg, int exit_flag = 0)
 }
 
 
+#include "audiovideo.h"
 #include "fifo.h"
 #include "rtp.h"
-#include "audiovideo.h"
+
 
 #endif	/* _COMMON_H */
