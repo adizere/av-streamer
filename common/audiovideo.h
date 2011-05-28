@@ -131,6 +131,7 @@ typedef struct _streaminfo
     int height;
     PixelFormat pix_fmt;
     CodecID codec_id;           ///< Video codec ID.
+    bool includes_audio;        ///< Do we have an audio stream?
     CodecID audio_codec_id;     ///< Audio codec ID.
     int freq;                   ///< Audio frequency in samples per second (sample rate).
     Uint8 channels;             ///< Number of channels: 1 mono, 2 stereo.
@@ -152,6 +153,7 @@ private:
     AVCodec *codec;                     ///< Video codec.
     AVCodecContext *audio_codec_ctx;    ///< Audio codec context.
     AVCodec *audio_codec;               ///< Audio codec.
+    bool read_audio_packets;
 #if defined (__AvsServer__)
     AVFormatContext *format_ctx;        ///< Media file handle and context.
 #endif /*defined (__AvsServer__) */
@@ -167,7 +169,7 @@ private:
 public:
     AVManager (AVManagerMode mode);
 #if defined (__AvsServer__)
-    bool init_send (const char *filename);
+    bool init_send (const char *filename, bool read_audio_packets);
     bool get_stream_info (streaminfo *stream_info);
     bool read_packet_from_file (AVMediaPacket **media_packet);
     void end_send ();
