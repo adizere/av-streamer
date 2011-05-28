@@ -88,8 +88,8 @@ int audiovideo_api_test()
         if (media_packet->packet_type == AVPacketVideoType)
             mgr_client.play_video_packet (media_packet);
         // experimental audio playing.
-        //if (media_packet->packet_type == AVPacketAudioType)
-        //    mgr_client.play_audio_packet (media_packet);
+        if (media_packet->packet_type == AVPacketAudioType)
+            mgr_client.play_audio_packet (media_packet);
         mgr_client.free_packet (media_packet);
         media_packet = NULL;
     }
@@ -108,6 +108,8 @@ int audiovideo_api_test()
  */
 int main(int argc, char* argv[])
 {
+    //return audiovideo_api_test();
+
     char* file;
     useconds_t st_rate;
     handle_cmd_args(argc, argv, &file, &st_rate);
@@ -178,7 +180,7 @@ int main(int argc, char* argv[])
         
 
         /* 
-         * Initialize client handler data */
+         * Initialize client handler data and client media transfer/codec information. */
         ch_data* dp = (ch_data*) malloc(sizeof(ch_data));
         
         dp->sock = client_sock;
@@ -187,6 +189,11 @@ int main(int argc, char* argv[])
         dp->st_rate = st_rate;
         dp->rem_addr = rem_addr;
         dp->private_fifo = create_fifo(FIFO_DEFAULT_CAPACITY);
+        
+        // Initialize audio-video stream information.
+        
+        dp->avmanager = new AVManager (AVSenderMode);
+        memset ((void *)&dp->stream_info, 0, sizeof (streaminfo));
         
         pthread_mutex_t* pfifo_mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
         
