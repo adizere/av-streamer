@@ -65,7 +65,8 @@ int audiovideo_api_test()
     AVManager mgr_server (AVSenderMode);
     streaminfo si;
 
-    if (mgr_server.init_send ("/home/hani/nature.avi") == false)
+    // \todo Feature: enable audio packet reading from commandline.
+    if (mgr_server.init_send ("/home/hani/nature.avi", false) == false)
         return -1;
     
     if (mgr_server.get_stream_info (&si) == false)
