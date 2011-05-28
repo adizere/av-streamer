@@ -44,7 +44,10 @@ void* recv_thread(void*)
     int last_PUC_seq = 0;
     int last_timestamp = TIMESTAMP_START - 1;
     fifo_elem PUC; /* Package Under Construction */
-    AVMediaPacket *media_packet = NULL;
+    int puc_total_payload_size  = 0;    // Actually the size of the entire current media_packet (all fragments put together).
+    int puc_done_size           = 0;    // Bytes successfully copyied to the PUC from the total amount.
+    int puc_fragment_size       = 0;    // Current PUC fragment size.
+    AVMediaPacket *media_packet = NULL; // A fifo_elem is actually an AVMediaPacket *.
 
     
     /* Adi: Same as the server, did not test anything because I can't compile, error:
@@ -75,19 +78,33 @@ void* recv_thread(void*)
             
             // PUC = instantiateAVMediaPacket();
             int8_t* dest_ptr = (int8_t*) &PUC;
-            memcpy( (void*) dest_ptr, (void*) (packet->payload), sizeof(rtp_payload));
+
+            // At the beginning we will surely have the entire AVMediaPacket header + some data.
+            // A little hack: we get how many bytes are we expecting to receive
+            // in order to fully construct our PUC.
+            
+            media_packet = (AVMediaPacket *)packet->payload;
+            puc_total_payload_size = media_packet->entire_media_packet_size;
+            
+            if (puc_total_payload_size >= sizeof(rtp_payload))
+                puc_fragment_size = sizeof(rtp_payload);
+            else
+                puc_fragment_size = puc_total_payload_size;
+
+            puc_done_size = puc_fragment_size;
+            memcpy( (void*) dest_ptr, (void*) (packet->payload), puc_fragment_size);
 
             continue;
         }
-
-        media_packet = (AVMediaPacket *)packet->payload;
         
         if (packet->header.M == MARKER_ALONE) {
             /* this is the whole packet, no fragmentation was necessary */
             // Copy bytes from network buffer to fifo_elem queue node.
             
-            fifo_elem fe = (fifo_elem)malloc (sizeof (media_packet->entire_media_packet_size));
-            
+            media_packet = (AVMediaPacket *)packet->payload;
+            puc_total_payload_size = media_packet->entire_media_packet_size;
+            puc_fragment_size = puc_total_payload_size;
+            fifo_elem fe = (fifo_elem)malloc (media_packet->entire_media_packet_size);
             memcpy((void *)fe, (void *)media_packet, media_packet->entire_media_packet_size);
             
             LOCK(&p_queue_mutex);
@@ -108,14 +125,25 @@ void* recv_thread(void*)
         if (packet->header.seq - last_PUC_seq == 1) {
             /* this is a completing fragment for the packet in PUC */
             
+            if (puc_done_size + sizeof (rtp_payload) > puc_total_payload_size)
+                puc_fragment_size = puc_total_payload_size - puc_done_size;
+            else
+                puc_fragment_size = sizeof (rtp_payload);
+
             // put in PUC packet->payload
-            int8_t* dest_ptr = (int8_t*)&PUC;
-            dest_ptr += 0; //TODO COMPUTE OFFSET WHERE TO COPY FRAGMENT
-            memcpy( dest_ptr, (void*) (packet->payload), sizeof(rtp_payload));
+            uint8_t* dest_ptr = (uint8_t*)&PUC;
+            dest_ptr += puc_done_size;
+            memcpy( dest_ptr, (void*) (packet->payload), puc_fragment_size);
+            puc_done_size += puc_fragment_size;
             
             if (packet->header.M == MARKER_LAST) {
                 /* this is the last fragment of the packet from PUC */
                 
+                // Development: Small assertion just to check for now
+                // that we've got the entire packet on this side everytime right.
+                if (puc_done_size != puc_total_payload_size)
+                    error ("Incomplete fifo_elem.\n");
+
                 LOCK(&p_queue_mutex);
                 
                 rc = enqueue(av_packets_queue, PUC);
@@ -169,17 +197,22 @@ void* play_thread(void*)
 
     printf("Retrieving stream information from server...");
 
-    LOCK(&p_queue_mutex);
-    rc = dequeue(av_packets_queue, &fe);
+    do {
+        LOCK (&p_queue_mutex);
+        rc = dequeue (av_packets_queue, &fe);    
+        UNLOCK (&p_queue_mutex);
+        usleep (1000);
+    } while (rc < 0); 
+
     if (rc < 0) {
         DBGPRINT ("Error: Unable to retrieve stream information from server.");
         return NULL;
     }
-    UNLOCK(&p_queue_mutex);
 
     media_packet = (AVMediaPacket *)fe;
     if (media_packet == NULL || media_packet->packet_type != AVPacketStreamInfoType ||
-        AVManager::packet_to_stream_info (media_packet, &si) == false) {
+        AVManager::packet_to_stream_info (media_packet, &si) == false)
+    {
         DBGPRINT ("Retrieved invalid stream information from packet queue.");
         AVManager::free_packet (media_packet);
         return NULL;
