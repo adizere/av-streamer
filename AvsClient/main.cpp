@@ -8,7 +8,7 @@
 #include "globals.h"
 #include "../common/common.h"
 
-
+AVManager avmanager (AVReceiverMode);
 int socket_handle;      /* global socket */
 
 fifo* av_packets_queue;
@@ -44,6 +44,7 @@ void* recv_thread(void*)
     int last_PUC_seq = 0;
     int last_timestamp = TIMESTAMP_START - 1;
     fifo_elem PUC; /* Package Under Construction */
+    AVMediaPacket *media_packet = NULL;
 
     
     /* Adi: Same as the server, did not test anything because I can't compile, error:
@@ -78,13 +79,16 @@ void* recv_thread(void*)
 
             continue;
         }
+
+        media_packet = (AVMediaPacket *)packet->payload;
         
         if (packet->header.M == MARKER_ALONE) {
             /* this is the whole packet, no fragmentation was necessary */
-        
-            fifo_elem fe;
+            // Copy bytes from network buffer to fifo_elem queue node.
             
-            memcpy((void*) &fe, (void*) (packet->payload), sizeof(fifo_elem));
+            fifo_elem fe = (fifo_elem)malloc (sizeof (media_packet->entire_media_packet_size));
+            
+            memcpy((void *)fe, (void *)media_packet, media_packet->entire_media_packet_size);
             
             LOCK(&p_queue_mutex);
 
@@ -94,6 +98,9 @@ void* recv_thread(void*)
 
             UNLOCK(&p_queue_mutex);
             
+            // Do not free the fifo_elem. It's not yours!
+            // The enqueue is done by reference copy only.
+
 //            free(PUC) if necessary
             continue;
         }
@@ -155,27 +162,71 @@ void* play_thread(void*)
 {
     int rc;
     fifo_elem fe;
+    AVMediaPacket *media_packet = NULL;
+    streaminfo si = {0};
     
     printf("Play thread: \n");
-    
+
+    printf("Retrieving stream information from server...");
+
+    LOCK(&p_queue_mutex);
+    rc = dequeue(av_packets_queue, &fe);
+    if (rc < 0) {
+        DBGPRINT ("Error: Unable to retrieve stream information from server.");
+        return NULL;
+    }
+    UNLOCK(&p_queue_mutex);
+
+    media_packet = (AVMediaPacket *)fe;
+    if (media_packet == NULL || media_packet->packet_type != AVPacketStreamInfoType ||
+        AVManager::packet_to_stream_info (media_packet, &si) == false) {
+        DBGPRINT ("Retrieved invalid stream information from packet queue.");
+        AVManager::free_packet (media_packet);
+        return NULL;
+    }
+
+    if (avmanager.init_recv (&si) == false) {
+        DBGPRINT ("Unable to initialize audio-video manager.");
+        return NULL;
+    }
+
+    AVManager::free_packet (media_packet);
+    media_packet = NULL;
+
     while(flag_transmission_finished == 0)
     {
-        LOCK(&p_queue_mutex);
-
-        rc = dequeue(av_packets_queue, &fe);
-
-        UNLOCK(&p_queue_mutex);
+        LOCK (&p_queue_mutex);
+        rc = dequeue (av_packets_queue, &fe);
+        UNLOCK (&p_queue_mutex);
         
         if (rc < 0) {
              usleep(1000);
              continue;
         }
+
+        media_packet = (AVMediaPacket *)fe;
+        if (media_packet == NULL) {
+            DBGPRINT ("[play_thread] invalid media packet retrieved from media stream.");
+            AVManager::free_packet (media_packet);
+            continue;
+        }
+        
+        if (media_packet->packet_type == AVPacketVideoType)
+            avmanager.play_video_packet (media_packet);
+        // experimental audio playing.
+        //if (media_packet->packet_type == AVPacketAudioType)
+        //    mgr_client.play_audio_packet (media_packet);
+        AVManager::free_packet (media_packet);
+        
+/*
+        Dummy :p code. That's why we don't use it.
         
         char msg[5];
         memcpy(msg, &fe, sizeof(fe));
         msg[4] = 0;
         
         printf("%s", msg);
+*/
     }
 }
 
@@ -228,4 +279,3 @@ int main(int argc, char** argv)
     
     return (EXIT_SUCCESS);
 }
-
