@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
     /* Bind the socket to the local address and port. */
     rc = bind(rv_sock, (struct sockaddr *)&addr, sizeof(addr));
     if(rc < 0)
-        error("Unable to bind!\n");
+        error("Unable to bind!\n", 1);
 
     /* Listen on that port for incoming connections */
     rc = listen(rv_sock, MAX_DCCP_CONNECTION_BACK_LOG);
@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
         rem_len = sizeof(rem_addr);
         client_sock = accept(rv_sock, (struct sockaddr *)&rem_addr, &rem_len);
         if(client_sock < 0)
-            error("Socket accept() error!\n", 1);
+            error("Socket accept() error!", 1);
         
 
         /* 
@@ -190,6 +190,7 @@ int main(int argc, char* argv[])
         dp->st_rate = st_rate;
         dp->rem_addr = rem_addr;
         dp->private_fifo = create_fifo(FIFO_DEFAULT_CAPACITY);
+        dp->client_quit_flag = 0;
         
         // Initialize audio-video stream information.
         

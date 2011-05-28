@@ -17,7 +17,7 @@ void ch_data_free(ch_data *data)
 /* Client handler thread
  */
 void* ch_thread(void* data)
-{
+{   
     ch_data* dp = (ch_data*)data;
 
     int client_sock = dp->sock;
@@ -52,6 +52,8 @@ void* ch_thread(void* data)
     close(client_sock);
     destroy_fifo(dp->private_fifo);
     ch_data_free(dp);
+    
+    printf("Should do some more cleanup probably..\n");
 
 
     LOCK(&server_mutex);
@@ -83,6 +85,9 @@ void* send_thread(void* data)
     
     while(1)
     {
+        if (dp->client_quit_flag == 1)
+            break;
+        
         memset(packet->payload, 0, PAYLOAD_MAX_SIZE);
         
         LOCK(p_fifo_mutex);
@@ -137,6 +142,9 @@ void* send_thread(void* data)
                             break;
                     }
                 } while (false);
+                
+                if (dp->client_quit_flag == 1)
+                    break;
             }
         } else {
             // Send the whole packet.
@@ -185,6 +193,7 @@ void* recv_thread(void* data)
         if (rc == 0)            /* peer has shutdown the socket */
         {
             printf("Client shutdown\n");
+            dp->client_quit_flag = 1;
             break;
         }
         
@@ -225,6 +234,9 @@ void* stream_read_thread(void* data)
     // Loop for media packets.
     while (dp->avmanager->read_packet_from_file (&media_packet))
     {
+        if (dp->client_quit_flag == 1)
+            break;
+        
         max_enqueue_tries = MAX_ENQUEUE_TRIES;
         do {
             LOCK (p_fifo_mutex);

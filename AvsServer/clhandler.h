@@ -27,6 +27,9 @@ typedef struct
     streaminfo stream_info;             ///< Audio video stream information shared with client.
 
     // TODO add fifo+mtx for feedback information
+    
+    
+    short int client_quit_flag;     /* Announce all threads through this that they should quit */
 } ch_data;
 
 // Securely free client handler data.
