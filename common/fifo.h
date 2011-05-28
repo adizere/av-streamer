@@ -9,10 +9,12 @@
 #define	_FIFO_H
 
 #include <stdlib.h>
-#include "rtp.h"
 #include "audiovideo.h"
+#include "rtp.h"
 
-typedef int fifo_elem; // TODO change to payload
+#define MAX_ENQUEUE_TRIES   5
+
+typedef struct _AVMediaPacket *fifo_elem;
 
 typedef struct _fifo
 {
@@ -32,4 +34,3 @@ int dequeue(fifo* fp, fifo_elem* el);
 void destroy_fifo(fifo* fp);
 
 #endif	/* _FIFO_H */
-
