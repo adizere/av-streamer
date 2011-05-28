@@ -69,7 +69,8 @@ void* send_thread(void* data)
     ch_data* dp = (ch_data*)data;
     pthread_mutex_t* p_fifo_mutex = dp->p_fifo_mutex;
     
-    int client_sock = dp->sock;
+    int client_sock  = dp->sock;
+    int send_success = false;
 
     fifo_elem fe;
     rtp_packet* packet = create_packet();
@@ -90,6 +91,9 @@ void* send_thread(void* data)
 
         UNLOCK(p_fifo_mutex);
 
+        // \todo Are we only sleeping here if there's an error?
+        //       What if no error occurs?
+        
         if (rc == -1)
         {
             usleep(5 * dp->st_rate);
@@ -105,7 +109,7 @@ void* send_thread(void* data)
             entire_packet_size = media_packet->entire_media_packet_size;
             
             while (done < entire_packet_size) {
-                if (done + PAYLOAD_MAX_SIZE > entire_packet_size - done)
+                if (done + PAYLOAD_MAX_SIZE <= entire_packet_size)
                     fragment_size = PAYLOAD_MAX_SIZE;
                 else
                     fragment_size = entire_packet_size - done;
@@ -122,9 +126,17 @@ void* send_thread(void* data)
                 if (done >= entire_packet_size)
                     packet->header.M = MARKER_LAST;
                 
-                int rc = send (client_sock, packet, sizeof(rtp_packet), 0);
-                if (rc < 0)
-                    error("Error sending a packet to the client");
+                do {
+                    int rc = send (client_sock, packet, sizeof(rtp_packet), 0);
+                    if (rc < 0) {
+                        error ("Error sending a packet to the client.");
+                        printf ("errno: %d\n", errno);
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                            continue;
+                        else
+                            break;
+                    }
+                } while (false);
             }
         } else {
             // Send the whole packet.
@@ -133,10 +145,18 @@ void* send_thread(void* data)
             packet->header.M = MARKER_ALONE;
             
             memcpy(packet->payload, (char*)fe, media_packet->entire_media_packet_size);
-            
-            int rc = send(client_sock, packet, sizeof(rtp_packet), 0);
-            if (rc < 0)
-                error("Error sending a packet to the client");
+
+            do {
+                int rc = send(client_sock, packet, sizeof(rtp_packet), 0);
+                if (rc < 0) {
+                    error ("Error sending a packet to the client.");
+                    printf ("errno: %d\n", errno);
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        continue;
+                    else
+                        break;
+                }
+            } while (false);
             
             // Free the AVMediaPacket dequeued from the queue.
             AVManager::free_packet (media_packet);
