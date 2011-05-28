@@ -75,9 +75,6 @@ void* recv_thread(void*)
         
         if (packet->header.M == MARKER_FIRST) {
             /* this is the first fragment from a bigger packet */
-            
-            // PUC = instantiateAVMediaPacket();
-            int8_t* dest_ptr = (int8_t*) &PUC;
 
             // At the beginning we will surely have the entire AVMediaPacket header + some data.
             // A little hack: we get how many bytes are we expecting to receive
@@ -92,7 +89,15 @@ void* recv_thread(void*)
                 puc_fragment_size = puc_total_payload_size;
 
             puc_done_size = puc_fragment_size;
-            memcpy( (void*) dest_ptr, (void*) (packet->payload), puc_fragment_size);
+            PUC = (fifo_elem)malloc (media_packet->entire_media_packet_size);
+            if (PUC == NULL) {
+                error ("Not enough memory to allocate that much of a buffer.\n");
+                break;
+            }
+            memset ((void *)PUC, 0, media_packet->entire_media_packet_size);
+            memcpy ((void *)PUC, (void *)(packet->payload), puc_fragment_size);
+            
+            last_PUC_seq = packet->header.seq;
 
             continue;
         }
@@ -105,6 +110,10 @@ void* recv_thread(void*)
             puc_total_payload_size = media_packet->entire_media_packet_size;
             puc_fragment_size = puc_total_payload_size;
             fifo_elem fe = (fifo_elem)malloc (media_packet->entire_media_packet_size);
+            if (fe == NULL) {
+                error ("Not enough memory to allocate that much of a buffer.\n");
+                break;            
+            }
             memcpy((void *)fe, (void *)media_packet, media_packet->entire_media_packet_size);
             
             LOCK(&p_queue_mutex);
@@ -118,7 +127,6 @@ void* recv_thread(void*)
             // Do not free the fifo_elem. It's not yours!
             // The enqueue is done by reference copy only.
 
-//            free(PUC) if necessary
             continue;
         }
         
@@ -131,10 +139,10 @@ void* recv_thread(void*)
                 puc_fragment_size = sizeof (rtp_payload);
 
             // put in PUC packet->payload
-            uint8_t* dest_ptr = (uint8_t*)&PUC;
-            dest_ptr += puc_done_size;
+            uint8_t* dest_ptr = (uint8_t*)PUC;
+            dest_ptr         += puc_done_size;
             memcpy( dest_ptr, (void*) (packet->payload), puc_fragment_size);
-            puc_done_size += puc_fragment_size;
+            puc_done_size    += puc_fragment_size;
             
             if (packet->header.M == MARKER_LAST) {
                 /* this is the last fragment of the packet from PUC */
@@ -243,6 +251,8 @@ void* play_thread(void*)
             AVManager::free_packet (media_packet);
             continue;
         }
+        
+        printf ("Playing media packet: {pts=%ld}\n", media_packet->packet.pts);
         
         if (media_packet->packet_type == AVPacketVideoType)
             avmanager.play_video_packet (media_packet);
