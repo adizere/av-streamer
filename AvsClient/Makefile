@@ -1,5 +1,5 @@
 INCLUDEDIRS:=-I/usr/local/include
-CFLAGS:=$(CFLAGS) -D__AvsServer__ -D__AvsClient__
+CFLAGS:=$(CFLAGS) -D__AvsClient__
 AVLIBS:=-L/usr/local/lib -L/usr/lib -lpthread -lSDL -lavformat -lavcodec -lavutil -lswscale
 
 all: client common
