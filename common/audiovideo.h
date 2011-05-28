@@ -50,6 +50,7 @@ extern "C"
 }
 #include <SDL/SDL.h>
 
+#include "../common/common.h"
 
 #define SDL_AUDIO_BUFFER_SIZE 1024
 
@@ -70,9 +71,10 @@ enum AVManagerMode
 ///
 enum AVMediaPacketType
 {
-    AVPacketVideoType,
-    AVPacketAudioType,
-    AVPacketUnknownType
+    AVPacketStreamInfoType,     ///< Stream information.
+    AVPacketVideoType,          ///< Video packet.
+    AVPacketAudioType,          ///< Audio packet.
+    AVPacketUnknownType         ///< Unknown.
 };
 
 
@@ -87,7 +89,7 @@ typedef struct _AVMediaPacket
     int data_size;                          ///< Size of data from media packet (just data).
                                             ///< Actually duplicated from packet field.
     // Actuall media data follows right here...
-} __attribute__((packed)) AVMediaPacket;
+} __attribute__((packed)) AVMediaPacket, *PAVMediaPacket;
 
 
 #if defined (__AvsClient__)
@@ -121,8 +123,8 @@ private:
 #endif /* defined (__AvsClient__) */
 
 
-/// Codec initialization information
-/// send over the network to the client.
+/// \brief Codec initialization information send over the network to the client.
+///        This is the information the client has to get first to initialize the client-side codecs.
 typedef struct _streaminfo
 {
     int width;
@@ -165,7 +167,7 @@ private:
 public:
     AVManager (AVManagerMode mode);
 #if defined (__AvsServer__)
-    bool init_send (char *filename);
+    bool init_send (const char *filename);
     bool get_stream_info (streaminfo *stream_info);
     bool read_packet_from_file (AVMediaPacket **media_packet);
     void end_send ();
@@ -179,6 +181,8 @@ public:
 #if !defined (__AvsServer__) && !defined (__AvsClient__)
 #error "__AvsServer__ and __AvsClient__ not defined!"
 #endif
+    static bool stream_info_to_packet (streaminfo *stream_info, AVMediaPacket **media_packet);
+    static bool packet_to_stream_info (AVMediaPacket *media_packet, streaminfo *stream_info);
     static void free_packet (AVMediaPacket *media_packet);
     ~AVManager ();
 };
