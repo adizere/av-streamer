@@ -9,6 +9,7 @@ void ch_data_free(ch_data *data)
 
     if (data->avmanager != NULL)
         free (data->avmanager);
+    data->avmanager = NULL;
     free (data);
 }
 
@@ -72,10 +73,13 @@ void* send_thread(void* data)
 
     fifo_elem fe;
     rtp_packet* packet = create_packet();
+    int fragment_size           = 0;    // How many bytes of the rtp packet payload is contained in this fragment?
+    int entire_packet_size      = 0;    // Size in bytes of the entire rtp packet (sum of sizes of fragments payload).
     AVMediaPacket *media_packet = NULL; // AVMediaPacket alias/pointer to fifo_elem.
 
     sequence_nr = SEQUENCE_START;
     timestamp_nr = TIMESTAMP_START;
+    
     while(1)
     {
         memset(packet->payload, 0, PAYLOAD_MAX_SIZE);
@@ -96,33 +100,41 @@ void* send_thread(void* data)
         
         /* Create new rtp packet to be sent.. */
         if (media_packet->entire_media_packet_size > PAYLOAD_MAX_SIZE) {
+            // Fragment packet.
             int done = 0;
+            entire_packet_size = media_packet->entire_media_packet_size;
             
-            while(done < media_packet->entire_media_packet_size) {
-                memset(packet->payload, 0, PAYLOAD_MAX_SIZE);
-                memcpy(packet->payload, (char*)fe + done, PAYLOAD_MAX_SIZE - 1);
+            while (done < entire_packet_size) {
+                if (done + PAYLOAD_MAX_SIZE > entire_packet_size - done)
+                    fragment_size = PAYLOAD_MAX_SIZE;
+                else
+                    fragment_size = entire_packet_size - done;
                 
-                packet->header.seq = sequence_nr++;
+                memset (packet->payload, 0, PAYLOAD_MAX_SIZE);
+                memcpy (packet->payload, (unsigned char*)fe + done, fragment_size);
+                
+                packet->header.seq       = sequence_nr++;
                 packet->header.timestamp = timestamp_nr;
-                packet->header.M = done == 0 ? MARKER_FIRST : MARKER_FRAGMENT;
+                packet->header.M = (done == 0) ? MARKER_FIRST : MARKER_FRAGMENT;
                 
-                done = done + PAYLOAD_MAX_SIZE - 1;
+                done = done + fragment_size;
                 
-                if (done >= media_packet->entire_media_packet_size)
+                if (done >= entire_packet_size)
                     packet->header.M = MARKER_LAST;
                 
-                int rc = send(client_sock, packet, sizeof(*packet), 0);
+                int rc = send (client_sock, packet, sizeof(rtp_packet), 0);
                 if (rc < 0)
                     error("Error sending a packet to the client");
             }
         } else {
+            // Send the whole packet.
             packet->header.seq = sequence_nr++;
             packet->header.timestamp = timestamp_nr;
             packet->header.M = MARKER_ALONE;
             
             memcpy(packet->payload, (char*)fe, media_packet->entire_media_packet_size);
             
-            int rc = send(client_sock, packet, sizeof(*packet), 0);
+            int rc = send(client_sock, packet, sizeof(rtp_packet), 0);
             if (rc < 0)
                 error("Error sending a packet to the client");
             
@@ -173,15 +185,18 @@ void* stream_read_thread(void* data)
     int max_enqueue_tries = MAX_ENQUEUE_TRIES;
 
     // Init server-size codecs and open media file.
-    if (dp->avmanager->init_send (dp->filename) == false)
+    // \todo Feature: enable audio packet reading from commandline.
+    if (dp->avmanager->init_send (dp->filename, false) == false)
         goto CLEAN_AND_EXIT;
 
     // Get useful media information for client and push them in the queue.
     if (dp->avmanager->get_stream_info (&dp->stream_info) == false)
         goto CLEAN_AND_EXIT;
-    if (AVManager::stream_info_to_packet (&dp->stream_info, &media_packet))
+    if (AVManager::stream_info_to_packet (&dp->stream_info, &media_packet) == false)
         goto CLEAN_AND_EXIT;
+    LOCK (dp->p_fifo_mutex);
     queue_status = enqueue (dp->private_fifo, (fifo_elem)media_packet);
+    UNLOCK (dp->p_fifo_mutex);
     if (queue_status < 0) {
         DBGPRINT ("[stream_read_thread] Queue is full!");
         goto CLEAN_AND_EXIT;
@@ -190,8 +205,6 @@ void* stream_read_thread(void* data)
     // Loop for media packets.
     while (dp->avmanager->read_packet_from_file (&media_packet))
     {
-        
-        
         max_enqueue_tries = MAX_ENQUEUE_TRIES;
         do {
             LOCK (p_fifo_mutex);
