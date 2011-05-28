@@ -66,7 +66,7 @@ int audiovideo_api_test()
     streaminfo si;
 
     // \todo Feature: enable audio packet reading from commandline.
-    if (mgr_server.init_send ("/home/hani/nature.avi", false) == false)
+    if (mgr_server.init_send ("/home/hani/cars1.avi", false) == false)
         return -1;
     
     if (mgr_server.get_stream_info (&si) == false)
@@ -79,7 +79,7 @@ int audiovideo_api_test()
     AVMediaPacket *media_packet = NULL;
     si_client = si;
     mgr_client.init_recv (&si);
-
+    
 
     // On each packet send over the wire, we must add a flag
     // stating that this is a either an audio or a video packet.
@@ -89,8 +89,8 @@ int audiovideo_api_test()
         if (media_packet->packet_type == AVPacketVideoType)
             mgr_client.play_video_packet (media_packet);
         // experimental audio playing.
-        if (media_packet->packet_type == AVPacketAudioType)
-            mgr_client.play_audio_packet (media_packet);
+        //if (media_packet->packet_type == AVPacketAudioType)
+        //    mgr_client.play_audio_packet (media_packet);
         mgr_client.free_packet (media_packet);
         media_packet = NULL;
     }
