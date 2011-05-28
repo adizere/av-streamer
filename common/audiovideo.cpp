@@ -283,7 +283,7 @@ AVManager::AVManager (AVManagerMode mode) :
 
 #if defined (__AvsServer__)
 
-bool AVManager::init_send (char *filename)
+bool AVManager::init_send (const char *filename)
 {
     int i = 0;
     int video_stream = -1;
@@ -402,6 +402,7 @@ bool AVManager::get_stream_info (streaminfo *stream_info)
     return true;
 }
 
+
 /**
     \brief You must dealloc the packet after reading it from the file.
            We'll build here a contiguous memory area with an AVMediaPacket header.
@@ -429,8 +430,12 @@ bool AVManager::read_packet_from_file (AVMediaPacket **media_packet)
     }
 
     media_header = (AVMediaPacket *)malloc (sizeof (AVMediaPacket) + packet.size * sizeof (uint8_t));
+    if (media_header == NULL) {
+        DBGPRINT ("Error: not enough memory.");
+        return false;    
+    }
 
-    // Fill in the media packet attributes with some basic information.
+    // Fill in the media packet attributes with all the helpul information.
 
     media_header->entire_media_packet_size = sizeof (AVMediaPacket) + packet.size * sizeof (uint8_t);
 
@@ -440,9 +445,12 @@ bool AVManager::read_packet_from_file (AVMediaPacket **media_packet)
         media_header->packet_type = AVPacketAudioType;
     else media_header->packet_type = AVPacketUnknownType;
 
+    // packet.data buffer resides in memory. Don't use av_free, or the buffer will be destroyed.
+
     memcpy ((void *)&media_header->packet, (const void *)&packet, sizeof(packet));
     media_header->data_size = packet.size;
-    memcpy (((unsigned char *)(media_header))+sizeof(AVMediaPacket), (const void *)packet.data, packet.size);
+    memcpy ((void *)(((unsigned char *)(media_header))+sizeof(AVMediaPacket)),
+        (const void *)packet.data, packet.size);
 
     *media_packet = media_header;
     
@@ -677,12 +685,25 @@ bool AVManager::play_video_packet (AVMediaPacket *media_packet)
 ///
 bool AVManager::play_audio_packet (AVMediaPacket *media_packet)
 {
-    this->audio_packet_queue.put (&media_packet->packet);
+    //this->audio_packet_queue.put (&media_packet->packet);
+    static uint8_t audio_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2] = {0};
+    AVPacket *packet = NULL;
+    int len = 0;
+    int data_size = 0;
+
+    if (media_packet == NULL)
+        return false;
+    
+    packet = &media_packet->packet;
+    len = avcodec_decode_audio2 (this->audio_codec_ctx,
+        (int16_t *)audio_buf, &data_size, packet->data, packet->size);
 }
 
 
 void AVManager::end_recv ()
 {
+    SDL_CloseAudio ();
+
     if (this->codec_ctx) {
         avcodec_close (this->codec_ctx);
         av_free (this->codec_ctx);
@@ -700,12 +721,65 @@ void AVManager::end_recv ()
 
 #endif /* defined (__AvsClient) */
 
+
+///
+/// \brief Convert streaminfo structure to an AVMediaPacket for sending it to the client.
+///
+bool AVManager::stream_info_to_packet (streaminfo * stream_info, AVMediaPacket **media_packet)
+{
+    AVPacket packet;
+    AVMediaPacket *media_header = NULL;
+
+    if (stream_info == NULL || media_packet == NULL) {
+        DBGPRINT ("Error : null pointer.\n");
+        return false;
+    }
+
+    media_packet = NULL;
+    memset ((void *)&packet, 0, sizeof(AVPacket));
+
+    media_header = (AVMediaPacket *)malloc (sizeof (AVMediaPacket) + sizeof (stream_info));
+    if (media_header == NULL) {
+        DBGPRINT ("Error: not enough memory.");
+        return false;    
+    }
+
+    // Fill in the media packet attributes with all the helpul information.
+
+    media_header->entire_media_packet_size = sizeof (AVMediaPacket) + sizeof (stream_info);
+    media_header->packet_type = AVPacketStreamInfoType;
+    memset (&media_header->packet, 0, sizeof (AVPacket));
+    media_header->data_size = sizeof (stream_info);
+    memcpy (((unsigned char *)(media_header))+sizeof(AVMediaPacket),
+        (const void *)stream_info, sizeof (streaminfo));
+    *media_packet = media_header;
+    
+    return true;
+}
+
+
+bool AVManager::packet_to_stream_info (AVMediaPacket *media_packet, streaminfo *stream_info)
+{
+    if (media_packet == NULL || stream_info == NULL ||
+        media_packet->packet_type != AVPacketStreamInfoType)
+        return false;    
+
+    memcpy ((void *)stream_info, (void *)(((unsigned char *)(media_packet)) + sizeof (AVMediaPacket)),
+        media_packet->data_size);
+
+    return true;
+}
+
+
 void AVManager::free_packet (AVMediaPacket *media_packet)
 {
     if (media_packet == NULL)
         return;
-    
-    av_free_packet (&media_packet->packet);
+    // av_free_packet() actually just free up the data buffer
+    // and sets the size to 0 of the AVPacket structure.
+    // Check first the data buffer for NULL, just to be sure.
+    if (media_packet->packet.data != NULL)
+        av_free_packet (&media_packet->packet);    
     free (media_packet);
 }
 
