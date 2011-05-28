@@ -848,8 +848,10 @@ void AVManager::free_packet (AVMediaPacket *media_packet)
     if (media_packet->packet_type == AVPacketVideoType ||
         media_packet->packet_type == AVPacketAudioType)
     {
+#if defined (__AvsServer__) && !defined (__AvsClient__)
         if (media_packet->packet.data != NULL)
             av_free (media_packet->packet.data);
+#endif
     }
     media_packet->packet.data = NULL;
     media_packet->packet.size = 0;
