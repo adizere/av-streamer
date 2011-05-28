@@ -23,9 +23,14 @@ typedef struct
     fifo* private_fifo;                 /* the queue used for this particular client */
     pthread_mutex_t* p_fifo_mutex;       /* what thread owns the queue ? */
 
+    AVManager  *avmanager;              ///< Audio video manager for coding/decoding media packets.
+    streaminfo stream_info;             ///< Audio video stream information shared with client.
+
     // TODO add fifo+mtx for feedback information
 } ch_data;
 
+// Securely free client handler data.
+void ch_data_free(ch_data *data);
 
 // client handler thread
 void* ch_thread(void* data);
@@ -40,4 +45,3 @@ void* recv_thread(void* data);
 void* stream_read_thread(void* data);
 
 #endif	/* _NEWFILE_H */
-
