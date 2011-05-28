@@ -266,7 +266,7 @@ int audio_decode_frame
 // Do any needed initialization here.
 AVManager::AVManager (AVManagerMode mode) :
     filename (NULL), stream_info (NULL), codec (NULL), codec_ctx (NULL),
-    video_stream_index (0), audio_stream_index (0)
+    video_stream_index (-1), audio_stream_index (-1), read_audio_packets (false)
 #if defined (__AvsServer__)
     , format_ctx (NULL)
 #endif /* defined (__AvsServer__) */
@@ -277,13 +277,23 @@ AVManager::AVManager (AVManagerMode mode) :
 {
     this->mode = mode;
     this->stream_info = (streaminfo *)malloc (sizeof (struct _streaminfo));
+
+#if defined (__AvsServer__)
     // Register formats and codecs.
     av_register_all ();
+#elif defined (__AvsClient__)
+    // Must be called before using avcodec library.
+    avcodec_init ();
+    // Register all the codecs.
+    avcodec_register_all ();
+#else
+#error "You must declare __AvsClient__ or __AvsServer__"
+#endif
 }
 
 #if defined (__AvsServer__)
 
-bool AVManager::init_send (const char *filename)
+bool AVManager::init_send (const char *filename, bool read_audio_packets)
 {
     int i = 0;
     int video_stream = -1;
@@ -296,6 +306,7 @@ bool AVManager::init_send (const char *filename)
     
     this->filename = (char *)malloc (strlen (filename) + 1);
     strcpy (this->filename, filename);
+    this->read_audio_packets = read_audio_packets;
     
     if (av_open_input_file (&format_ctx, this->filename, NULL, 0, NULL) !=0) {
         fprintf (stderr, "Error: Cannot open media file.\n");
@@ -322,9 +333,11 @@ bool AVManager::init_send (const char *filename)
             && video_stream < 0) {
             video_stream = i;
         }
-        if (format_ctx->streams[i]->codec->codec_type == CODEC_TYPE_AUDIO
-            && audio_stream < 0) {
-            audio_stream = i;
+        if (this->read_audio_packets == true) {
+            if (format_ctx->streams[i]->codec->codec_type == CODEC_TYPE_AUDIO
+                && audio_stream < 0) {
+                audio_stream = i;
+            }
         }
     }
 
@@ -332,14 +345,15 @@ bool AVManager::init_send (const char *filename)
         fprintf (stderr, "Error: No video stream was found.\n");
         return false;
     }
-
-    if (audio_stream == -1) {
+  
+    if (this->read_audio_packets == true && audio_stream == -1) {
         fprintf (stderr, "Error: No audio stream was found.\n");
         return false;
     }
 
     this->video_stream_index = video_stream;
-    this->audio_stream_index = audio_stream;
+    if (this->read_audio_packets == true)
+        this->audio_stream_index = audio_stream;
     
     // Get a pointer to the codec context for the video stream.
     this->codec_ctx = format_ctx->streams[video_stream]->codec;
@@ -357,20 +371,28 @@ bool AVManager::init_send (const char *filename)
         return false;
     }
 
-    // Get a pointer to the codec context for the video stream.
-    this->audio_codec_ctx = format_ctx->streams[audio_stream]->codec;
+    if (this->read_audio_packets == true)
+    {
+        // Get a pointer to the codec context for the audio stream.
+        this->audio_codec_ctx = format_ctx->streams[audio_stream]->codec;
 
-    // Find the decoder for the video stream.
-    this->audio_codec = avcodec_find_decoder(audio_codec_ctx->codec_id);
-    if(this->audio_codec == NULL) {
-        fprintf (stderr, "Error: Unsupported audio codec.\n");
-        return false;
+        // Find the decoder for the audio stream.
+        this->audio_codec = avcodec_find_decoder(audio_codec_ctx->codec_id);
+        if(this->audio_codec == NULL) {
+            fprintf (stderr, "Error: Unsupported audio codec.\n");
+            return false;
+        }
+        
+        // Open audio codec.
+        if (avcodec_open (audio_codec_ctx, audio_codec) < 0) {
+            fprintf (stderr, "Error: Could not open audio codec.\n");
+            return false;
+        }
     }
-    
-    // Open video codec.
-    if (avcodec_open (audio_codec_ctx, audio_codec) < 0) {
-        fprintf (stderr, "Error: Could not open audio codec.\n");
-        return false;
+    else
+    {
+        this->audio_codec_ctx = NULL;
+        this->audio_codec     = NULL;
     }
 
     return true;
@@ -388,17 +410,25 @@ bool AVManager::get_stream_info (streaminfo *stream_info)
     this->stream_info->height   = this->codec_ctx->height;
     this->stream_info->pix_fmt  = this->codec_ctx->pix_fmt;
     this->stream_info->codec_id = this->codec_ctx->codec_id;
-    this->stream_info->audio_codec_id = this->audio_codec_ctx->codec_id;
-    this->stream_info->freq     = this->audio_codec_ctx->sample_rate;
-    this->stream_info->channels = this->audio_codec_ctx->channels;
+    this->stream_info->includes_audio = this->read_audio_packets;
+    if (this->read_audio_packets == true) {
+        this->stream_info->audio_codec_id = this->audio_codec_ctx->codec_id;
+        this->stream_info->freq           = this->audio_codec_ctx->sample_rate;
+        this->stream_info->channels       = this->audio_codec_ctx->channels;
+    } else {
+        this->stream_info->audio_codec_id = CODEC_ID_NONE;
+        this->stream_info->freq           = -1;
+        this->stream_info->channels       = -1;
+    }
     
     stream_info->width    = this->codec_ctx->width;
     stream_info->height   = this->codec_ctx->height;
     stream_info->pix_fmt  = this->codec_ctx->pix_fmt;
     stream_info->codec_id = this->codec_ctx->codec_id;
-    stream_info->audio_codec_id = this->audio_codec_ctx->codec_id;
-    stream_info->freq     = this->audio_codec_ctx->sample_rate;
-    stream_info->channels = this->audio_codec_ctx->channels;
+    stream_info->includes_audio = this->stream_info->includes_audio;
+    stream_info->audio_codec_id = this->stream_info->audio_codec_id;
+    stream_info->freq     = this->stream_info->freq;
+    stream_info->channels = this->stream_info->channels;
     return true;
 }
 
@@ -413,6 +443,7 @@ bool AVManager::read_packet_from_file (AVMediaPacket **media_packet)
     int frame_finished = 0;
     AVPacket packet;
     AVMediaPacket *media_header = NULL;
+    bool packet_read_success = false;
     
     if (media_packet == NULL) {
         fprintf (stderr, "Error: media packet storage is NULL.\n");
@@ -424,10 +455,23 @@ bool AVManager::read_packet_from_file (AVMediaPacket **media_packet)
     
     // Read media packet (audio/video).
 
-    if (av_read_frame (this->format_ctx, &packet) < 0) {
-        // Error or end of file.
-        return false;
-    }
+    do {
+        if (av_read_frame (this->format_ctx, &packet) < 0) {
+            // The only way to get out of this loop is by an error or finding the end of the file.
+            return false;
+        }
+        if (packet.size == 0 || (this->read_audio_packets == false
+            && packet.stream_index != this->video_stream_index))
+        {
+            // Throw away this audio packet and skip to the next video packet.
+            av_free_packet (&packet);
+            packet_read_success = false;
+        }
+        else
+        {
+            packet_read_success = true;
+        }
+    } while (packet_read_success == false);
 
     media_header = (AVMediaPacket *)malloc (sizeof (AVMediaPacket) + packet.size * sizeof (uint8_t));
     if (media_header == NULL) {
@@ -498,9 +542,12 @@ bool AVManager::init_recv (streaminfo *stream_info)
     this->stream_info->height   = stream_info->height;
     this->stream_info->pix_fmt  = stream_info->pix_fmt;
     this->stream_info->codec_id = stream_info->codec_id;
+    this->stream_info->includes_audio = stream_info->includes_audio;
     this->stream_info->audio_codec_id = stream_info->audio_codec_id;
     this->stream_info->freq     = stream_info->freq;
-    this->stream_info->channels = stream_info->channels;    
+    this->stream_info->channels = stream_info->channels;
+
+    this->read_audio_packets    = stream_info->includes_audio;
 
     // Find the decoder for the video stream.
     this->codec = avcodec_find_decoder (this->stream_info->codec_id);
@@ -511,6 +558,7 @@ bool AVManager::init_recv (streaminfo *stream_info)
     
     // Create new video context.
     this->codec_ctx = avcodec_alloc_context ();
+    avcodec_get_context_defaults (this->codec_ctx);
     if (this->codec_ctx == NULL) {
         fprintf (stderr, "Error: Unable to get a new video codec context.\n");
         goto CLEAN_AND_FAIL;
@@ -557,48 +605,53 @@ bool AVManager::init_recv (streaminfo *stream_info)
 
     // Create and open new audio context.
     
-    this->audio_codec_ctx = avcodec_alloc_context ();
-    if (this->audio_codec_ctx == NULL) {
-        fprintf (stderr, "Error: Unable to get a new audio codec context.\n");
-        goto CLEAN_AND_FAIL;
+    if (this->read_audio_packets == true) {
+        this->audio_codec_ctx = avcodec_alloc_context ();
+        if (this->audio_codec_ctx == NULL) {
+            fprintf (stderr, "Error: Unable to get a new audio codec context.\n");
+            goto CLEAN_AND_FAIL;
+        }
+
+        // Open SDL audio.
+
+        this->wanted_audio_spec.freq     = this->audio_codec_ctx->sample_rate;
+        this->wanted_audio_spec.format   = AUDIO_S16SYS;
+        this->wanted_audio_spec.channels = this->audio_codec_ctx->channels;
+        this->wanted_audio_spec.silence  = 0;
+        this->wanted_audio_spec.samples  = SDL_AUDIO_BUFFER_SIZE;
+        this->wanted_audio_spec.callback = audio_callback;
+        this->wanted_audio_spec.userdata = this->audio_codec_ctx;
+        
+        if(SDL_OpenAudio (&this->wanted_audio_spec, &this->obtained_audio_spec) < 0) {
+            fprintf (stderr, "Error: SDL_OpenAudio: %s\n", SDL_GetError());
+            goto CLEAN_AND_FAIL;
+        }
+
+        // Find the decoder for the audio stream.
+        this->audio_codec = avcodec_find_decoder (this->stream_info->audio_codec_id);
+        if (this->audio_codec == NULL) {
+            fprintf (stderr, "Error: Unable to find propper audio decoder.\n");
+            goto CLEAN_AND_FAIL;
+        }
+
+        if (avcodec_open (this->audio_codec_ctx, this->audio_codec) < 0) {
+            fprintf (stderr, "Error: Could not open audio codec.\n");
+            goto CLEAN_AND_FAIL;
+        }
+
+        // Initialize audio packet queue.
+
+        if (audio_packet_queue.init ()) {
+            fprintf (stderr, "Error: Could not initialize audio packet queue.\n");
+            goto CLEAN_AND_FAIL;    
+        }
+
+        SDL_PauseAudio (0);
+        
+    } else {
+        this->audio_codec_ctx = NULL;
+        this->audio_codec     = NULL;
     }
-
-
-    // Open SDL audio.
-
-    this->wanted_audio_spec.freq     = this->audio_codec_ctx->sample_rate;
-    this->wanted_audio_spec.format   = AUDIO_S16SYS;
-    this->wanted_audio_spec.channels = this->audio_codec_ctx->channels;
-    this->wanted_audio_spec.silence  = 0;
-    this->wanted_audio_spec.samples  = SDL_AUDIO_BUFFER_SIZE;
-    this->wanted_audio_spec.callback = audio_callback;
-    this->wanted_audio_spec.userdata = this->audio_codec_ctx;
-    
-    if(SDL_OpenAudio (&this->wanted_audio_spec, &this->obtained_audio_spec) < 0) {
-        fprintf (stderr, "Error: SDL_OpenAudio: %s\n", SDL_GetError());
-        goto CLEAN_AND_FAIL;
-    }
-
-    // Find the decoder for the audio stream.
-    this->audio_codec = avcodec_find_decoder (this->stream_info->audio_codec_id);
-    if (this->audio_codec == NULL) {
-        fprintf (stderr, "Error: Unable to find propper audio decoder.\n");
-        goto CLEAN_AND_FAIL;
-    }
-
-    if (avcodec_open (this->audio_codec_ctx, this->audio_codec) < 0) {
-        fprintf (stderr, "Error: Could not open audio codec.\n");
-        goto CLEAN_AND_FAIL;
-    }
-
-    // Initialize audio packet queue.
-
-    if (audio_packet_queue.init ()) {
-        fprintf (stderr, "Error: Could not initialize audio packet queue.\n");
-        goto CLEAN_AND_FAIL;    
-    }
-
-    SDL_PauseAudio (0);
 
     return true;
     
@@ -612,11 +665,14 @@ CLEAN_AND_FAIL:
         avcodec_close (this->audio_codec_ctx);
         av_free (this->audio_codec_ctx);
     }
-    this->audio_codec_ctx = NULL;    
-    if (this->sws_ctx)
-        sws_freeContext (this->sws_ctx);
+    if (this->read_audio_packets == true) {
+        this->audio_codec_ctx = NULL;
+        if (this->sws_ctx)
+            sws_freeContext (this->sws_ctx);
+        this->audio_packet_queue.close ();
+    }
     this->sws_ctx = NULL;
-    this->audio_packet_queue.close ();
+    
     return false;
 }
 
@@ -640,12 +696,20 @@ bool AVManager::play_video_packet (AVMediaPacket *media_packet)
 
     packet = &media_packet->packet;
 
+//#ifndef __AvsServer__
+    // Do a little trick here, so that we don't create the overhead
+    // of copying data buffer from AVMediaPacket payload to packet->data.
+    // Just give him the pointer.
+    packet->size = media_packet->data_size;
+    packet->data = (uint8_t *)((uint8_t *)media_packet + sizeof (AVMediaPacket));
+//#endif
+
     frame = avcodec_alloc_frame ();
     if (frame == NULL) {
         fprintf (stderr, "Unable to allocate new AVFrame (frame).\n");
         return false;
     }
-    
+  
     avcodec_decode_video (this->codec_ctx, frame,
         &frame_finished, packet->data, packet->size);
 
@@ -685,18 +749,22 @@ bool AVManager::play_video_packet (AVMediaPacket *media_packet)
 ///
 bool AVManager::play_audio_packet (AVMediaPacket *media_packet)
 {
-    //this->audio_packet_queue.put (&media_packet->packet);
-    static uint8_t audio_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2] = {0};
-    AVPacket *packet = NULL;
-    int len = 0;
-    int data_size = 0;
+    if (this->read_audio_packets == true) {
+        //this->audio_packet_queue.put (&media_packet->packet);
+        static uint8_t audio_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2] = {0};
+        AVPacket *packet = NULL;
+        int len = 0;
+        int data_size = 0;
 
-    if (media_packet == NULL)
-        return false;
-    
-    packet = &media_packet->packet;
-    len = avcodec_decode_audio2 (this->audio_codec_ctx,
-        (int16_t *)audio_buf, &data_size, packet->data, packet->size);
+        if (media_packet == NULL)
+            return false;
+        
+        packet = &media_packet->packet;
+        len = avcodec_decode_audio2 (this->audio_codec_ctx,
+            (int16_t *)audio_buf, &data_size, packet->data, packet->size);
+    } else {
+        return true;
+    }
 }
 
 
@@ -709,11 +777,13 @@ void AVManager::end_recv ()
         av_free (this->codec_ctx);
     }
     this->codec_ctx = NULL;
-    if (this->audio_codec_ctx) {
-        avcodec_close (this->audio_codec_ctx);
-        av_free (this->audio_codec_ctx);
+    if (this->read_audio_packets == true) {
+        if (this->audio_codec_ctx) {
+            avcodec_close (this->audio_codec_ctx);
+            av_free (this->audio_codec_ctx);
+        }
+        this->audio_codec_ctx = NULL;
     }
-    this->audio_codec_ctx = NULL;    
     if (this->sws_ctx)
         sws_freeContext (this->sws_ctx);
     this->sws_ctx = NULL;
@@ -727,7 +797,6 @@ void AVManager::end_recv ()
 ///
 bool AVManager::stream_info_to_packet (streaminfo * stream_info, AVMediaPacket **media_packet)
 {
-    AVPacket packet;
     AVMediaPacket *media_header = NULL;
 
     if (stream_info == NULL || media_packet == NULL) {
@@ -735,22 +804,20 @@ bool AVManager::stream_info_to_packet (streaminfo * stream_info, AVMediaPacket *
         return false;
     }
 
-    media_packet = NULL;
-    memset ((void *)&packet, 0, sizeof(AVPacket));
-
-    media_header = (AVMediaPacket *)malloc (sizeof (AVMediaPacket) + sizeof (stream_info));
+    *media_packet = NULL;
+    media_header = (AVMediaPacket *)malloc (sizeof (AVMediaPacket) + sizeof (streaminfo));
     if (media_header == NULL) {
         DBGPRINT ("Error: not enough memory.");
-        return false;    
+        return false;
     }
 
     // Fill in the media packet attributes with all the helpul information.
 
-    media_header->entire_media_packet_size = sizeof (AVMediaPacket) + sizeof (stream_info);
+    memset ((void *)media_header, 0, sizeof (AVMediaPacket) + sizeof (streaminfo));
+    media_header->entire_media_packet_size = sizeof (AVMediaPacket) + sizeof (streaminfo);
     media_header->packet_type = AVPacketStreamInfoType;
-    memset (&media_header->packet, 0, sizeof (AVPacket));
-    media_header->data_size = sizeof (stream_info);
-    memcpy (((unsigned char *)(media_header))+sizeof(AVMediaPacket),
+    media_header->data_size = sizeof (streaminfo);
+    memcpy ((void *)((uint8_t *)(media_header)+sizeof(AVMediaPacket)),
         (const void *)stream_info, sizeof (streaminfo));
     *media_packet = media_header;
     
@@ -775,11 +842,17 @@ void AVManager::free_packet (AVMediaPacket *media_packet)
 {
     if (media_packet == NULL)
         return;
-    // av_free_packet() actually just free up the data buffer
+    // av_free_packet() actually just frees up the data buffer
     // and sets the size to 0 of the AVPacket structure.
     // Check first the data buffer for NULL, just to be sure.
-    if (media_packet->packet.data != NULL)
-        av_free_packet (&media_packet->packet);    
+    if (media_packet->packet_type == AVPacketVideoType ||
+        media_packet->packet_type == AVPacketAudioType)
+    {
+        if (media_packet->packet.data != NULL)
+            av_free (media_packet->packet.data);
+    }
+    media_packet->packet.data = NULL;
+    media_packet->packet.size = 0;
     free (media_packet);
 }
 
@@ -792,9 +865,10 @@ AVManager::~AVManager ()
 #if defined (__AvsClient__)
     if (this->sws_ctx)
         sws_freeContext (sws_ctx);
-    this->audio_packet_queue.close ();
+    if (this->read_audio_packets == true)
+        this->audio_packet_queue.close ();
 #endif /* (__AvsClient__) */
-    this->video_stream_index = 0;
-    this->audio_stream_index = 0;
+    this->video_stream_index = -1;
+    this->audio_stream_index = -1;
     
 }
