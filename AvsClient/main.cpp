@@ -257,7 +257,7 @@ void* play_thread(void*)
         UNLOCK (&p_queue_mutex);
         
         if (rc < 0) {
-            if (flag_transmission_finished == 0)
+            if (flag_transmission_finished == 1)
                 break;
             usleep(CLIENT_FIFO_POLL_TIMEOUT);
             continue;

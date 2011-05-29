@@ -137,7 +137,7 @@ void* send_thread(void* data)
                         error ("Error sending a packet to the client.");
                         printf ("errno: %d\n", errno);
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                            usleep(dp->st_rate * 2);        /* give the client some time to breath */
+                            usleep(dp->st_rate * 5);        /* give the client some time to breath */
                             continue;
                         } else
                             break;
@@ -161,7 +161,7 @@ void* send_thread(void* data)
                     error ("Error sending a packet to the client.");
                     printf ("errno: %d\n", errno);
                     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        usleep(dp->st_rate * 2);        /* give the client some time to breath */
+                        usleep(dp->st_rate * 5);        /* give the client some time to breath */
                         continue;
                     } else
                         break;
@@ -259,6 +259,8 @@ void* stream_read_thread(void* data)
         // method copies the reference, NOT the content of the fifo_elem.
         
         media_packet = NULL;
+        
+        usleep(dp->st_rate);
     }
 
 CLEAN_AND_EXIT:
