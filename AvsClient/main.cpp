@@ -182,7 +182,7 @@ void* recv_thread(void*)
             }
         }
     }
-    
+    sleep(1);   /* some buffer sleep() between recv-ing and playing */
     printf("Transmission from server finished.\n");
     flag_transmission_finished = 1;
 }
@@ -275,9 +275,9 @@ void* play_thread(void*)
         if (media_packet->packet_type == AVPacketVideoType)
             avmanager.play_video_packet (media_packet);
         // experimental audio playing.
-        //if (media_packet->packet_type == AVPacketAudioType)
-        //    mgr_client.play_audio_packet (media_packet);
-        AVManager::free_packet (media_packet);
+//        if (media_packet->packet_type == AVPacketAudioType)
+//            avmanager.play_audio_packet (media_packet);
+//        AVManager::free_packet (media_packet);
         
 /*
         Dummy :p code. That's why we don't use it.
