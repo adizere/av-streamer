@@ -247,16 +247,20 @@ void* play_thread(void*)
 
     AVManager::free_packet (media_packet);
     media_packet = NULL;
+    
 
-    while(flag_transmission_finished == 0)
+
+    while(1)
     {
         LOCK (&p_queue_mutex);
         rc = dequeue (av_packets_queue, &fe);
         UNLOCK (&p_queue_mutex);
         
         if (rc < 0) {
-             usleep(CLIENT_FIFO_POLL_TIMEOUT);
-             continue;
+            if (flag_transmission_finished == 0)
+                break;
+            usleep(CLIENT_FIFO_POLL_TIMEOUT);
+            continue;
         }
 
         media_packet = (AVMediaPacket *)fe;
