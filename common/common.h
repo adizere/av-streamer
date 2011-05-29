@@ -30,6 +30,11 @@
 
 #define FIFO_DEFAULT_CAPACITY 1000      // TODO: decide how big should this be
 
+#define CLIENT_RECV_TIMEOUT 5           /* how much time do we wait for a packet? */
+#define CLIENT_FIFO_POLL_TIMEOUT 1000        /* how much time do we wait for data in queue 
+                                         * interpreted in miliseconds
+                                         */
+
 #define LOCK(x) pthread_mutex_lock(x)
 #define UNLOCK(x) pthread_mutex_unlock(x)
 

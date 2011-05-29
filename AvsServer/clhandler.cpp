@@ -136,9 +136,10 @@ void* send_thread(void* data)
                     if (rc < 0) {
                         error ("Error sending a packet to the client.");
                         printf ("errno: %d\n", errno);
-                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                            usleep(dp->st_rate * 2);        /* give the client some time to breath */
                             continue;
-                        else
+                        } else
                             break;
                     }
                 } while (false);
@@ -159,9 +160,10 @@ void* send_thread(void* data)
                 if (rc < 0) {
                     error ("Error sending a packet to the client.");
                     printf ("errno: %d\n", errno);
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        usleep(dp->st_rate * 2);        /* give the client some time to breath */
                         continue;
-                    else
+                    } else
                         break;
                 }
             } while (false);

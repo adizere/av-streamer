@@ -8,6 +8,7 @@
 #include "globals.h"
 #include "../common/common.h"
 
+
 AVManager avmanager (AVReceiverMode);
 int socket_handle;      /* global socket */
 
@@ -48,17 +49,30 @@ void* recv_thread(void*)
     int puc_done_size           = 0;    // Bytes successfully copyied to the PUC from the total amount.
     int puc_fragment_size       = 0;    // Current PUC fragment size.
     AVMediaPacket *media_packet = NULL; // A fifo_elem is actually an AVMediaPacket *.
+    
+    fd_set fds;
 
     
-    /* Adi: Same as the server, did not test anything because I can't compile, error:
-     * ../common/audiovideo.h:180:2: error: #error "Why do you need AVManager after all?"
-     * 
-     * TODO: test this thread!
-     * TODO2: find a method to know when we should stop recv()-ing, probably through select() ?
-     */
+    /* now receive data */
     while(1)
     {
         memset(packet, 0, sizeof(rtp_packet));
+        
+        /* select() syscall area */
+        FD_ZERO(&fds);
+        FD_SET(socket_handle, &fds);
+        struct timeval *t, time = {CLIENT_RECV_TIMEOUT, 0};
+        t = &time;
+        
+        int er = select(socket_handle + 1, &fds, NULL, NULL, t);
+        if (er == 0)
+            break;
+        else if (er < 0) {                      /** er < 0 an error ocurred during select() **/
+            error("Error @ select() call in reliableSend()\n", 1);
+            break;
+        }
+        /* END select() syscall area */
+        
         int rc = recv(socket_handle, packet, sizeof(rtp_packet), 0);
         if (rc == 0)  /* peer has shutdown the socket */
         {
@@ -180,7 +194,7 @@ void* send_thread(void*)
 
     int count = 0;
     char buff[512];
-    while(1)
+    while(flag_transmission_finished == 0)
     {
         sprintf(buff, "dummy feedback %d", count++);
         int rc = send(socket_handle, buff, strlen(buff)+1, 0);
@@ -203,7 +217,7 @@ void* play_thread(void*)
     
     printf("Play thread: \n");
 
-    printf("Retrieving stream information from server...");
+    printf("Retrieving stream information from server...\n");
 
     do {
         LOCK (&p_queue_mutex);
@@ -241,7 +255,7 @@ void* play_thread(void*)
         UNLOCK (&p_queue_mutex);
         
         if (rc < 0) {
-             usleep(1000);
+             usleep(CLIENT_FIFO_POLL_TIMEOUT);
              continue;
         }
 
@@ -271,6 +285,8 @@ void* play_thread(void*)
         printf("%s", msg);
 */
     }
+
+    avmanager.end_recv();
 }
 
 
