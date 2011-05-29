@@ -252,7 +252,7 @@ void* play_thread(void*)
             continue;
         }
         
-        printf ("Playing media packet: {pts=%ld}\n", media_packet->packet.pts);
+//        printf ("Playing media packet: {pts=%ld}\n", media_packet->packet.pts);
         
         if (media_packet->packet_type == AVPacketVideoType)
             avmanager.play_video_packet (media_packet);

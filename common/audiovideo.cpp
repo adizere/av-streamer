@@ -727,7 +727,7 @@ bool AVManager::play_video_packet (AVMediaPacket *media_packet)
         scale = sws_scale (sws_ctx, frame->data, frame->linesize, 0,
             this->stream_info->height, picture.data, picture.linesize);
         
-        printf ("Result of scale: %d bytes.\n", scale);
+//        printf ("Result of scale: %d bytes.\n", scale);
         
         SDL_UnlockYUVOverlay (this->yuv_overlay);
         
