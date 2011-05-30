@@ -275,9 +275,9 @@ void* play_thread(void*)
         if (media_packet->packet_type == AVPacketVideoType)
             avmanager.play_video_packet (media_packet);
         // experimental audio playing.
-//        if (media_packet->packet_type == AVPacketAudioType)
-//            avmanager.play_audio_packet (media_packet);
-//        AVManager::free_packet (media_packet);
+        if (media_packet->packet_type == AVPacketAudioType)
+            avmanager.play_audio_packet (media_packet);
+        AVManager::free_packet (media_packet);
         
 /*
         Dummy :p code. That's why we don't use it.
