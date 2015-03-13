@@ -1,0 +1,104 @@
+AV-STREAMER DOCUMENTATION
+-----------------------------------------------
+-----------------------------------------------
+
+
+Project description
+-----------------------------------------------
+
+Av-Streamer is a client-server based application for streaming
+media files (audio-video movies) over the network. It uses the
+RTP/RTCP protocol to perform the media transmision over DCCP.
+The program responds to client requests and uppon successfully
+establishing a connection it serves each client independently
+with a movie through a DCCP connection.
+
+
+Required libraries
+-----------------------------------------------
+
+The application makes use of ffmpeg media codes to read and decode
+media (audio and video) packets from the file on the server side.
+In addition to that the SDL library is used on the client side
+to render audio and video packets received from the server.
+
+http://ffmpeg.org/
+http://www.libsdl.org/
+
+
+Usage
+-----------------------------------------------
+
+1. In order to use the application, the server has to be started first
+with the following commandline parameters:
+
+./server media_file_name transmition_rate_ms
+    media_file_name     - Video file received by each client.
+    transmition_rate_ms - Transmition rate in miliseconds. Recommended
+                          between 20000 and 40000 for normal playing.
+
+2. The server now listens for incomming clients on a DCCP established socket.
+
+3. The client is started with no command-line arguments. It knows the address
+where to find the listening server automatically.
+
+Type: ./server
+
+4. The client will receive receive incomming media packets from the server
+and renders the media file.
+
+
+
+Design documentation
+-----------------------------------------------
+
+* SERVER
+	1. On the server there is one central thread - named 'clhandler' - for
+	each of the clients that connect; Upon successfull connection, this
+	thread is spawned, handing to it a control structure with various
+	parameters needed in order to correctly serve the client - described
+	below;
+
+	// client handler data
+	typedef struct
+	{
+	    int sock;
+	    int pool_index;
+	    useconds_t st_rate;                 /* server transmission rate - interpreted in microseconds */
+	    const char* filename;
+	    struct sockaddr_in rem_addr;
+
+	    fifo* private_fifo;                 /* the queue used for this particular client */
+	    pthread_mutex_t* p_fifo_mutex;       /* what thread owns the queue ? */
+
+	    AVManager  *avmanager;              ///< Audio video manager for coding/decoding media packets.
+	    streaminfo stream_info;             ///< Audio video stream information shared with client.
+
+	    short int client_quit_flag;     /* Announce all threads through this that they should quit */
+	} ch_data;
+
+
+	2. clhandler will successively spawn 3 threads, in the following order:
+		a. stream_read_thread - the thread which reads the stream from
+		disk and fills a fifo structure - named private_fifo.
+
+		b. recv_thread - the feedback thread, wich waits for feedback
+		information sent from the client; a mechanism which uses this
+		feedback is yet to be implemented.
+
+		c. send_thread - the third thread handles the sending of
+		audio-video packets to the client. The rtp (server side)
+		protocol is implemented in this part, providing fragmentation
+		support. This sends audio-video fragments encapsulated in a rtp
+		packet, after each successfull send an usleep() being issued in
+		order to make the streaming process more smooth.
+
+
+	3. At the moment when a client disconnects the recv_thread will
+	observe this and mark a flag (client_quit_flag) from the client 
+	control structure, after which the thread terminates. 
+	The other 2 handling threads (stream_read & send) are notified by the
+	means of the above mentioned flag. Therefore, immediately after
+	the flag is marked, the other 2 threads also terminate their activity
+	and the control goes back to clhandler thread. This simply frees the
+	memory that was used and closes the client socket.
